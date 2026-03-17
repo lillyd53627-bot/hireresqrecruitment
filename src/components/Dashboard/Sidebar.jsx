@@ -16,15 +16,15 @@ import {
 import { cn } from "@/lib/utils";
 
 const menuItems = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
-  { icon: Sparkles, label: "AI Assistant", path: "/dashboard/aiassistant" },
-  { icon: Search, label: "AI Sourcing", path: "/dashboard/aisourcing" },
-  { icon: Users, label: "Candidates", path: "/dashboard/candidates" },
-  { icon: Briefcase, label: "Jobs", path: "/dashboard/jobs" },
-  { icon: Building2, label: "Clients", path: "/dashboard/clients" },
-  { icon: Mail, label: "Outreach", path: "/dashboard/outreach" },
-  { icon: Video, label: "Interviews", path: "/dashboard/interviews" },
-  { icon: BarChart3, label: "Analytics", path: "/dashboard/analytics" },
+  { icon: LayoutDashboard, label: "Dashboard", path: "/Dashboard" },
+  { icon: Sparkles, label: "AI Assistant", path: "/Dashboard/aiassistant" },
+  { icon: Search, label: "AI Sourcing", path: "/Dashboard/aisourcing" },
+  { icon: Users, label: "Candidates", path: "/Dashboard/candidates" },
+  { icon: Briefcase, label: "Jobs", path: "/Dashboard/jobs" },
+  { icon: Building2, label: "Clients", path: "/Dashboard/clients" },
+  { icon: Mail, label: "Outreach", path: "/Dashboard/outreach" },
+  { icon: Video, label: "Interviews", path: "/Dashboard/interviews" },
+  { icon: BarChart3, label: "Analytics", path: "/Dashboard/analytics" },
 ];
 
 export default function Sidebar({ isCollapsed, onToggle }) {
