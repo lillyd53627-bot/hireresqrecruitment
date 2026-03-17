@@ -20,7 +20,7 @@ import Demo from './pages//Demo';  // or adjust path if you placed it elsewhere
 
 
 // Dashboard layout + pages
-import DashboardLayout from './components/dashboard/DashboardLayout';
+import DashboardLayout from './components/Dashboard/DashboardLayout';
 import Dashboard from './pages/Dashboard/Dashboard';
 import Clients from './pages/Dashboard/Clients';
 import Jobs from './pages/Dashboard/Jobs';
