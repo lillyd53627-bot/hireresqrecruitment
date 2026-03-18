@@ -25,8 +25,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import Sidebar from '@/components/dashboard/Sidebar';
-import TopBar from '@/components/dashboard/TopBar';
+import Sidebar from '@/components/Dashboard/Sidebar';
+import TopBar from '@/components/Dashboard/TopBar';
 import GoogleSheetsSync from '@/components/candidates/GoogleSheetsSync';
 import { base44 } from '@/lib/mockBase44';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';

@@ -12,8 +12,8 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import Sidebar from '@/components/dashboard/Sidebar';
-import TopBar from '@/components/dashboard/TopBar';
+import Sidebar from '@/components/Dashboard/Sidebar';
+import TopBar from '@/components/Dashboard/TopBar';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 

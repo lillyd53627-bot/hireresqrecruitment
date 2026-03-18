@@ -13,8 +13,8 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import Sidebar from '@/components/dashboard/Sidebar';
-import TopBar from '@/components/dashboard/TopBar';
+import Sidebar from '@/components/Dashboard/Sidebar';
+import TopBar from '@/components/Dashboard/TopBar';
 import { toast } from 'sonner';
 
 export default function Companies() {

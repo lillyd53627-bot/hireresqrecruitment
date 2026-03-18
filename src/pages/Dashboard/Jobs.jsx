@@ -25,8 +25,8 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import Sidebar from '@/components/dashboard/Sidebar';
-import TopBar from '@/components/dashboard/TopBar';
+import Sidebar from '@/components/Dashboard/Sidebar';
+import TopBar from '@/components/Dashboard/TopBar';
 import JobDescriptionBiasAnalyzer from '@/components/ai/JobDescriptionBiasAnalyzer';
 import AICandidateMatcher from '@/components/jobs/AICandidateMatcher';
 import LinkedInShareButton from '@/components/linkedin/LinkedInShareButton';

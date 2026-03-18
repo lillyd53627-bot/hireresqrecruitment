@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import Sidebar from '../components/dashboard/Sidebar';
-import TopBar from '../components/dashboard/TopBar';
+import Sidebar from '../components/Dashboard/Sidebar';
+import TopBar from '../components/Dashboard/TopBar';
 import RecruitmentAssistantChat from '../components/ai/RecruitmentAssistantChat';
 
 export default function AIAssistant() {

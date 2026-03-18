@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Music2, TrendingUp, Users, Heart, Eye, Share2, AlertCircle } from 'lucide-react';
-import Sidebar from '@/components/dashboard/Sidebar';
-import TopBar from '@/components/dashboard/TopBar';
+import Sidebar from '@/components/Dashboard/Sidebar';
+import TopBar from '@/components/Dashboard/TopBar';
 import TikTokEngagementChart from '@/components/tiktok/TikTokEngagementChart';
 import TopPerformingVideos from '@/components/tiktok/TopPerformingVideos';
 import FollowerGrowthChart from '@/components/tiktok/FollowerGrowthChart';
@@ -32,7 +32,7 @@ export default function TikTokAnalytics() {
   };
 
   const handleConnectTikTok = () => {
-    window.open('https://app.base44.com/dashboard/integrations', '_blank');
+    window.open('https://app.base44.com/Dashboard/integrations', '_blank');
   };
 
   useEffect(() => {

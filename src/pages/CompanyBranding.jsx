@@ -8,8 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, Upload, Image, Palette, Crown, CheckCircle2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import Sidebar from '@/components/dashboard/Sidebar';
-import TopBar from '@/components/dashboard/TopBar';
+import Sidebar from '@/components/Dashboard/Sidebar';
+import TopBar from '@/components/Dashboard/TopBar';
 
 export default function CompanyBranding() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
