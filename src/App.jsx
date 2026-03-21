@@ -68,6 +68,7 @@ export default function App() {
           <Route path="/dashboard/analytics" element={<Analytics />} />
           <Route path="/dashboard/onboardingworkflows" element={<OnboardingWorkflows />} />
         </Route>
+        <Route path="/contact" element={<Contact />} />
 
         {/* Catch-all 404 */}
         <Route
