@@ -31,6 +31,7 @@ import Interviews from './pages/Dashboard/Interviews';
 import Settings from './pages/Dashboard/Settings';
 import Analytics from './pages/Dashboard/Analytics';
 import OnboardingWorkflows from './pages/Dashboard/OnboardingWorkflows';
+import Contact from "./pages/Contact";
 
 export default function App() {
   return (
