@@ -1,9 +1,9 @@
+// src/components/payment/PaystackPayment.jsx
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Loader2, Check } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-
-const PAYSTACK_PUBLIC_KEY = 'pk_test_1e3c9cf56e6baaf0baa8481ef4eae75e1807e898';
 
 export default function PaystackPayment({ plan, amount, onSuccess }) {
   const [loading, setLoading] = useState(false);
@@ -12,54 +12,54 @@ export default function PaystackPayment({ plan, amount, onSuccess }) {
     setLoading(true);
 
     try {
-      
-      const mockUser = {
-        email: 'demo@hireresq.com',
-        name: 'Demo Recruiter',
-        subscription: 'paid'
-      };
+      const { data: { user } } = await supabase.auth.getUser();
 
-      if (!mockUser?.email) {
-        
+      if (!user) {
+        toast.error('Please login first');
+        setLoading(false);
+        return;
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      if (typeof window.PaystackPop === 'undefined') {
+        toast.error('Payment system is still loading. Please refresh and try again.');
         setLoading(false);
         return;
       }
 
       const handler = window.PaystackPop.setup({
-        key: PAYSTACK_PUBLIC_KEY,
-        email: mockUser.email,
-        amount: amount * 100,
+        key: "pk_test_1e3c9cf56e6baaf0baa8481ef4eae75e1807e898",
+        email: user.email,
+        amount: Math.round(amount * 100),
         currency: 'ZAR',
-        ref: `${Date.now()}_${mockUser.email.replace(/[^a-zA-Z0-9]/g, '_')}`,
+        ref: `hrq_${Date.now()}_${user.id}`,
         metadata: {
-          custom_fields: [
-            {
-              display_name: 'Plan',
-              variable_name: 'plan',
-              value: plan.name || 'Pro Plan',
-            },
-          ],
+          plan: plan.id || plan.name,
+          plan_name: plan.name,
         },
         callback: async (response) => {
-          
-          console.log('Paystack response:', response);
+          console.log("✅ Payment successful!", response);
 
-          toast.success('Payment successful! Welcome aboard!');
-          
-          if (onSuccess) onSuccess();
+          toast.success(`🎉 Payment successful! Welcome to HireResQ AI`);
 
-          setLoading(false);
+          // Show alert and let user manually go to login (this stops the loop)
+          alert("Payment successful!\n\nPlease click OK, then go to the Login page and sign in with your email and password.");
+
+          // Do NOT do any automatic redirect here
         },
         onClose: () => {
-          toast.error('Payment cancelled');
+          toast.info("Payment was cancelled");
           setLoading(false);
-        },
+        }
       });
 
       handler.openIframe();
+
     } catch (error) {
-      console.error('Payment error:', error);
-      toast.error('Payment initialization failed');
+      console.error(error);
+      toast.error("Failed to initialize payment. Please refresh and try again.");
+    } finally {
       setLoading(false);
     }
   };
@@ -73,12 +73,12 @@ export default function PaystackPayment({ plan, amount, onSuccess }) {
       {loading ? (
         <>
           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-          Processing...
+          Processing Payment...
         </>
       ) : (
         <>
           <Check className="w-4 h-4 mr-2" />
-          Subscribe Now
+          Create Account & Pay R{amount} for 30 days
         </>
       )}
     </Button>

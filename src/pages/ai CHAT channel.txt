@@ -1,0 +1,18 @@
+const [messages, setMessages] = useState([]);
+const [input, setInput] = useState("");
+
+const sendMessage = async () => {
+  const newMessage = { role: "user", text: input };
+
+  setMessages([...messages, newMessage]);
+
+  // fake AI response (replace later with OpenAI)
+  setTimeout(() => {
+    setMessages((prev) => [
+      ...prev,
+      { role: "ai", text: "I found 25 matching candidates for this role." },
+    ]);
+  }, 1000);
+
+  setInput("");
+};

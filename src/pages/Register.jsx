@@ -1,29 +1,36 @@
+// src/pages/Register.jsx
 import React, { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CheckCircle, Mail, Phone, Globe, DollarSign, Briefcase, Users, Search } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';  // ← ADD THIS LINE
+import { CheckCircle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 export default function Register() {
+  const [searchParams] = useSearchParams();
+  const defaultPlan = searchParams.get('plan') || 'starter';
+
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
-    companyName: '',
     phone: '',
     password: '',
     confirmPassword: '',
   });
 
-  const [selectedPlan, setSelectedPlan] = useState('starter'); // default
+  const [selectedPlan, setSelectedPlan] = useState(defaultPlan);
+  const [loading, setLoading] = useState(false);
 
   const plans = {
-    starter: { name: 'Starter', amount: 154900, display: 'R1,549/month' },
-    growth: { name: 'Growth', amount: 399900, display: 'R3,999/month' },
-    advance: { name: 'Advance', amount: 799900, display: 'R7,999/month' },
+    starter: { name: 'Starter', amount: 1549, display: 'R1,549' },
+    growth: { name: 'Growth', amount: 3999, display: 'R3,999' },
+    advance: { name: 'Advance', amount: 7999, display: 'R7,999' },
   };
+
+  const currentPlan = plans[selectedPlan];
 
   const handleInputChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -37,188 +44,144 @@ export default function Register() {
       return;
     }
 
-    // Basic validation
     if (!formData.email || !formData.fullName || !formData.password) {
       alert("Please fill in all required fields");
       return;
     }
 
-    // Paystack popup
-    const handler = PaystackPop.setup({
-      key: 'pk_test_1e3c9cf56e6baaf0baa8481ef4eae75e1807e898', // ← REPLACE WITH YOUR PAYSTACK TEST PUBLIC KEY
+    // Your Live Paystack Key
+    const paystackKey = "pk_live_cc5867f5fb5677cf09c944f61d1bc5692e8bb46e";
+
+    const handler = window.PaystackPop.setup({
+      key: paystackKey,
       email: formData.email,
-      amount: plans[selectedPlan].amount * 100, // convert to kobo
+      amount: currentPlan.amount * 100,        // Correct amount in kobo
       currency: 'ZAR',
-      ref: '' + Math.floor((Math.random() * 1000000000) + 1), // unique ref
+      ref: `hrq_${Date.now()}`,
+      
+      // Force show Card + EFT (Bank Transfer) + QR
+      channels: ['card', 'bank_transfer', 'qr'],
+
       metadata: {
         custom_fields: [
-          { display_name: "Plan", variable_name: "plan", value: plans[selectedPlan].name },
           { display_name: "Full Name", variable_name: "full_name", value: formData.fullName },
-          { display_name: "Company", variable_name: "company", value: formData.companyName || 'N/A' },
+          { display_name: "Plan", variable_name: "plan", value: currentPlan.name },
+          { display_name: "Phone/WhatsApp", variable_name: "phone", value: formData.phone || 'N/A' },
         ],
       },
-      onClose: () => {
+      callback: function(response) {
+        alert('Payment successful!');
+        window.location.href = `/payment-success?reference=${response.reference}`;
+      },
+      onClose: function() {
         alert('Payment window closed.');
-      },
-      callback: (response) => {
-        alert('Payment successful! Reference: ' + response.reference);
-        // In real app: save user to backend, create subscription, redirect to dashboard
-        window.location.href = '/dashboard'; // or success page
-      },
+      }
     });
 
     handler.openIframe();
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4">
-      <div className="max-w-5xl w-full grid md:grid-cols-2 gap-12">
+    <div className="min-h-screen bg-gray-50 py-12 px-4">
+      <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-12 items-start">
         {/* Left: Form */}
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Your Account</h1>
-          <p className="text-gray-600 mb-8">Join hundreds of South African recruiters automating their hiring.</p>
+          <div className="mb-8">
+            <h1 className="text-4xl font-bold text-gray-900 leading-tight">
+              An AI-powered hiring machine that runs your recruitment business for you.
+            </h1>
+            <p className="text-gray-600 mt-3 text-lg">
+              Find clients who are hiring + source candidates automatically — 30 days at a time.
+            </p>
+          </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6 bg-white p-8 rounded-2xl shadow">
             <div>
-              <Label htmlFor="fullName">Full Name *</Label>
-              <Input
-                id="fullName"
-                name="fullName"
-                value={formData.fullName}
-                onChange={handleInputChange}
-                required
-              />
+              <Label>Full Name *</Label>
+              <Input name="fullName" value={formData.fullName} onChange={handleInputChange} required />
             </div>
 
             <div>
-              <Label htmlFor="email">Business Email *</Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                required
-              />
+              <Label>Business or Personal Email *</Label>
+              <Input type="email" name="email" value={formData.email} onChange={handleInputChange} required />
             </div>
 
             <div>
-              <Label htmlFor="companyName">Company Name</Label>
-              <Input
-                id="companyName"
-                name="companyName"
-                value={formData.companyName}
-                onChange={handleInputChange}
-              />
+              <Label>Phone / WhatsApp (important for launch offers)</Label>
+              <Input name="phone" value={formData.phone} onChange={handleInputChange} placeholder="083 467 6026" />
             </div>
 
             <div>
-              <Label htmlFor="phone">Phone / WhatsApp</Label>
-              <Input
-                id="phone"
-                name="phone"
-                value={formData.phone}
-                onChange={handleInputChange}
-              />
+              <Label>Password * (min 8 characters)</Label>
+              <Input type="password" name="password" value={formData.password} onChange={handleInputChange} required />
             </div>
 
             <div>
-              <Label htmlFor="password">Password * (min 8 characters)</Label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                value={formData.password}
-                onChange={handleInputChange}
-                required
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="confirmPassword">Confirm Password *</Label>
-              <Input
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
-                value={formData.confirmPassword}
-                onChange={handleInputChange}
-                required
-              />
+              <Label>Confirm Password *</Label>
+              <Input type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleInputChange} required />
             </div>
 
             {/* Plan Selection */}
-            <div className="pt-6 border-t">
-              <Label className="text-lg font-medium mb-4 block">Select Your Plan</Label>
-              <RadioGroup
-                value={selectedPlan}
-                onValueChange={setSelectedPlan}
-                className="grid gap-4"
-              >
+            <div className="pt-4">
+              <Label className="text-lg font-medium block mb-4">Select Your Plan</Label>
+              <RadioGroup value={selectedPlan} onValueChange={setSelectedPlan} className="space-y-4">
                 {Object.entries(plans).map(([key, plan]) => (
                   <div
                     key={key}
-                    className={`flex items-center space-x-3 border rounded-lg p-4 cursor-pointer transition-all ${
-                      selectedPlan === key
-                        ? 'border-red-600 bg-red-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
+                    className={`border rounded-xl p-4 flex items-center gap-3 cursor-pointer transition-all ${selectedPlan === key ? 'border-red-600 bg-red-50' : 'border-gray-200'}`}
                   >
                     <RadioGroupItem value={key} id={key} />
                     <div className="flex-1">
-                      <Label htmlFor={key} className="font-medium cursor-pointer">
-                        {plan.name} – {plan.display}
-                      </Label>
-                      {key === 'growth' && (
-                        <Badge className="ml-2 bg-red-600">Most Popular</Badge>
-                      )}
+                      <label htmlFor={key} className="font-medium cursor-pointer flex items-center gap-2">
+                        {plan.name} — {plan.display} for 30 days
+                        {key === 'growth' && <Badge className="bg-red-600 text-white">Most Popular</Badge>}
+                      </label>
                     </div>
                   </div>
                 ))}
               </RadioGroup>
             </div>
 
-            <Button
-              type="submit"
-              className="w-full bg-red-600 hover:bg-red-700 text-white py-7 text-xl font-medium mt-8"
+            <Button 
+              type="submit" 
+              className="w-full bg-red-600 hover:bg-red-700 text-white py-7 text-xl font-medium"
             >
-              Continue to Payment – {plans[selectedPlan].display}
+              Create Account & Pay {currentPlan.display} for 30 days
             </Button>
 
-            <p className="text-center text-sm text-gray-500 mt-4">
-              By registering, you agree to our Terms of Service and Privacy Policy (POPIA compliant)
+            <p className="text-center text-sm text-gray-500">
+              One-time payment for 30 days access • No auto-renewal • Cancel or pause anytime
             </p>
           </form>
         </div>
 
-        {/* Right: Plan benefits summary */}
-        <div className="hidden md:block">
+        {/* Right: Benefits */}
+        <div className="hidden md:block pt-12">
           <Card>
             <CardHeader>
-              <CardTitle>What's included</CardTitle>
+              <CardTitle>What's included with your 30-day package</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <ul className="space-y-3">
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5 text-green-600" />
-                  <span>Unlimited AI sourcing & screening</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5 text-green-600" />
-                  <span>Automated outreach & meeting booking</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5 text-green-600" />
-                  <span>Video interviews with smart scoring</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5 text-green-600" />
-                  <span>Auto-invoicing & payment tracking</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5 text-green-600" />
-                  <span>Dedicated support & white-label options</span>
-                </li>
-              </ul>
+              <div className="flex gap-3">
+                <CheckCircle className="w-6 h-6 text-green-600 mt-0.5" />
+                <div>AI finds companies actively hiring (you get clients)</div>
+              </div>
+              <div className="flex gap-3">
+                <CheckCircle className="w-6 h-6 text-green-600 mt-0.5" />
+                <div>AI sources top candidates automatically</div>
+              </div>
+              <div className="flex gap-3">
+                <CheckCircle className="w-6 h-6 text-green-600 mt-0.5" />
+                <div>Automated outreach that books meetings</div>
+              </div>
+              <div className="flex gap-3">
+                <CheckCircle className="w-6 h-6 text-green-600 mt-0.5" />
+                <div>Video interviews with smart scoring</div>
+              </div>
+              <div className="flex gap-3">
+                <CheckCircle className="w-6 h-6 text-green-600 mt-0.5" />
+                <div>CRM, job tracker, invoicing & reporting</div>
+              </div>
             </CardContent>
           </Card>
         </div>

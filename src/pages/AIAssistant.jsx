@@ -1,25 +1,50 @@
-import React, { useState } from 'react';
-import Sidebar from '../components/Dashboard/Sidebar';
-import TopBar from '../components/Dashboard/TopBar';
-import RecruitmentAssistantChat from '../components/ai/RecruitmentAssistantChat';
+const sendMessage = async () => {
+  if (!input.trim() || isLoading) return;
 
-export default function AIAssistant() {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const userMessage = { id: Date.now(), role: 'user', content: input.trim() };
+  setMessages(prev => [...prev, userMessage]);
+  const currentInput = input.trim();
+  setInput('');
+  setIsLoading(true);
 
-  return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar isCollapsed={isCollapsed} onToggle={() => setIsCollapsed(!isCollapsed)} />
-      
-      <main className={`flex-1 transition-all duration-300 ${isCollapsed ? 'ml-20' : 'ml-64'}`}>
-        <TopBar
-          title="AI Recruitment Assistant"
-          subtitle="Get instant help with sourcing, screening, and shortlisting candidates"
-        />
+  try {
+    const anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRsemlwa2xxYXhpdXBiaGdnYm5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NjYwMjMsImV4cCI6MjA5MDE0MjAyM30.N-9NaDds_ZZ2sfL8Tp-WX_NRH2UOjzNrIbRbBpUcGPo";
 
-        <div className="p-6 max-w-5xl mx-auto">
-          <RecruitmentAssistantChat />
-        </div>
-      </main>
-    </div>
-  );
-}
+    const response = await fetch('https://tlzipklqaxiupbhggbnm.supabase.co/functions/v1/ai-assistant', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': anonKey,
+        'Authorization': `Bearer ${anonKey}`
+      },
+      body: JSON.stringify({ message: currentInput })
+    });
+
+    console.log("AI Assistant fetch status:", response.status);
+
+    if (!response.ok) {
+      throw new Error(`Server returned ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    const assistantMessage = {
+      id: Date.now() + 1,
+      role: 'assistant',
+      content: data.response || "I understood your request. How else can I help with recruitment today?"
+    };
+
+    setMessages(prev => [...prev, assistantMessage]);
+  } catch (err) {
+    console.error("AI Assistant error:", err);
+    const fallback = {
+      id: Date.now() + 1,
+      role: 'assistant',
+      content: "I'm having trouble connecting right now. Try asking something like 'Find sales managers in Johannesburg' or 'Write an outreach email for a senior developer'."
+    };
+    setMessages(prev => [...prev, fallback]);
+    toast.error("AI service is temporarily unavailable.");
+  } finally {
+    setIsLoading(false);
+  }
+};

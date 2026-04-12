@@ -1,138 +1,202 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import { MapPin, Phone, Mail, Clock } from 'lucide-react';
-import ContactForm from '@/components/contact/ContactForm';
-import { Link } from 'react-router-dom';
-import { createPageUrl } from '@/utils';
+// src/pages/Contact.jsx
+import React, { useState } from 'react';
+import { MessageCircle, Mail, Phone, Building2, User } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { toast } from 'sonner';
+import { supabase } from '@/lib/supabase';
 
-export default function Contact() {
+export default function Contact() {   // Changed name from FooterContactSection to Contact
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    firstName: '',
+    surname: '',
+    contactNumber: '',
+    email: '',
+    companyName: '',
+    message: '',
+  });
+
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const { error } = await supabase.from('contact_requests').insert([
+        {
+          first_name: formData.firstName,
+          surname: formData.surname,
+          contact_number: formData.contactNumber,
+          email: formData.email,
+          company_name: formData.companyName,
+          message: formData.message,
+        },
+      ]);
+
+      if (error) throw error;
+
+      toast.success('Your message has been sent successfully');
+
+      setFormData({
+        firstName: '',
+        surname: '',
+        contactNumber: '',
+        email: '',
+        companyName: '',
+        message: '',
+      });
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to send message');
+    }
+
+    setLoading(false);
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* Navigation */}
-      <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link to={createPageUrl('Landing')} className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-red-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-xl">H</span>
-            </div>
-            <div>
-              <h1 className="font-bold text-xl text-gray-900">HireResQ AI</h1>
-              <p className="text-xs text-gray-600">Your Automated Hiring Department</p>
-            </div>
-          </Link>
-          <Link to={createPageUrl('Landing')}>
-            <button className="text-gray-600 hover:text-gray-900">← Back to Home</button>
-          </Link>
-        </div>
-      </nav>
+    <section className="bg-gray-950 text-white py-20 border-t border-gray-800">
+      <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-2 gap-12">
+        <div>
+          <div className="inline-flex items-center gap-2 bg-red-600/10 text-red-500 px-4 py-2 rounded-full mb-6 text-sm font-medium">
+            <MessageCircle className="w-4 h-4" />
+            Contact HireResQ AI
+          </div>
 
-      {/* Hero Section */}
-      <div className="max-w-7xl mx-auto px-6 py-16">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-12"
-        >
-          <h1 className="text-5xl font-bold text-gray-900 mb-4">Contact HireResQ AI</h1>
-          <p className="text-xl text-gray-600">
-            Ready to automate your recruitment? Get in touch with our team.
+          <h2 className="text-4xl font-bold mb-6">
+            Let’s Talk About Growing Your Recruitment Business
+          </h2>
+
+          <p className="text-gray-400 text-lg mb-8 max-w-xl">
+            Chat with us directly on WhatsApp or send us your details and our team will contact you.
           </p>
-        </motion.div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
-          {/* Contact Info Cards */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-white rounded-xl shadow-lg p-6 text-center"
+          <a
+            href="https://wa.me/27834676026"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-3 bg-green-600 hover:bg-green-700 px-6 py-4 rounded-2xl text-white font-semibold transition-all"
           >
-            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Phone className="w-6 h-6 text-red-600" />
-            </div>
-            <h3 className="font-semibold text-lg mb-2">Call Us</h3>
-            <p className="text-gray-600 mb-2">Speak to our team directly</p>
-            <a href="tel:0105006844" className="text-red-600 font-semibold text-lg">
-              010 500 6844
-            </a>
-          </motion.div>
+            <MessageCircle className="w-5 h-5" />
+            WhatsApp Us
+          </a>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-white rounded-xl shadow-lg p-6 text-center"
-          >
-            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Mail className="w-6 h-6 text-red-600" />
+          <div className="mt-10 space-y-4 text-gray-400">
+            <div className="flex items-center gap-3">
+              <Phone className="w-5 h-5 text-red-500" />
+              <span>0105006844</span>
             </div>
-            <h3 className="font-semibold text-lg mb-2">Email Us</h3>
-            <p className="text-gray-600 mb-2">Send us an enquiry</p>
-            <a href="mailto:info@hireresq.co.za" className="text-red-600 font-semibold">
-              info@hireresq.co.za
-            </a>
-          </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="bg-white rounded-xl shadow-lg p-6 text-center"
-          >
-            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Clock className="w-6 h-6 text-red-600" />
-            </div>
-            <h3 className="font-semibold text-lg mb-2">Business Hours</h3>
-            <p className="text-gray-600 mb-2">Monday - Friday</p>
-            <p className="text-gray-900 font-semibold">9:00 AM - 5:00 PM SAST</p>
-          </motion.div>
-        </div>
-
-        {/* Contact Form */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="max-w-3xl mx-auto"
-        >
-          <ContactForm />
-        </motion.div>
-
-        {/* Additional Info */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="text-center mt-12 p-8 bg-white rounded-xl shadow-lg"
-        >
-          <h3 className="text-2xl font-bold text-gray-900 mb-4">Why Choose HireResQ AI?</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
-            <div>
-              <h4 className="font-semibold text-red-600 mb-2">🤖 AI-Powered</h4>
-              <p className="text-gray-600">Automate sourcing, screening, and matching with cutting-edge AI technology.</p>
-            </div>
-            <div>
-              <h4 className="font-semibold text-red-600 mb-2">🎯 Client Finder</h4>
-              <p className="text-gray-600">Discover companies actively hiring and expand your client base effortlessly.</p>
-            </div>
-            <div>
-              <h4 className="font-semibold text-red-600 mb-2">⚡ 10x Faster</h4>
-              <p className="text-gray-600">Reduce time-to-hire from weeks to days with intelligent automation.</p>
+            <div className="flex items-center gap-3">
+              <Mail className="w-5 h-5 text-red-500" />
+              <span>info@hireresq.co.za</span>
             </div>
           </div>
-        </motion.div>
-      </div>
-
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-8 mt-16">
-        <div className="max-w-7xl mx-auto px-6 text-center">
-          <p className="text-gray-400">
-            © 2026 HireResQ AI. All rights reserved. | 
-            <a href="/privacy" className="text-red-400 hover:underline ml-2">Privacy Policy</a> | 
-            <a href="/terms" className="text-red-400 hover:underline ml-2">Terms of Service</a>
-          </p>
         </div>
-      </footer>
-    </div>
+
+        <div className="bg-gray-900 border border-gray-800 rounded-3xl p-8 shadow-xl">
+          <h3 className="text-2xl font-semibold mb-6">Contact Us</h3>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm text-gray-400 mb-2 block">First Name</label>
+                <div className="relative">
+                  <User className="absolute left-3 top-3.5 w-4 h-4 text-gray-500" />
+                  <Input
+                    name="firstName"
+                    value={formData.firstName}
+                    onChange={handleChange}
+                    required
+                    className="pl-10 bg-gray-950 border-gray-700 text-white"
+                    placeholder="John"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm text-gray-400 mb-2 block">Surname</label>
+                <Input
+                  name="surname"
+                  value={formData.surname}
+                  onChange={handleChange}
+                  required
+                  className="bg-gray-950 border-gray-700 text-white"
+                  placeholder="Smith"
+                />
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm text-gray-400 mb-2 block">Contact Number</label>
+                <Input
+                  name="contactNumber"
+                  value={formData.contactNumber}
+                  onChange={handleChange}
+                  required
+                  className="bg-gray-950 border-gray-700 text-white"
+                  placeholder="083 123 4567"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm text-gray-400 mb-2 block">Email Address</label>
+                <Input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  required
+                  className="bg-gray-950 border-gray-700 text-white"
+                  placeholder="john@company.com"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm text-gray-400 mb-2 block">Company Name</label>
+              <div className="relative">
+                <Building2 className="absolute left-3 top-3.5 w-4 h-4 text-gray-500" />
+                <Input
+                  name="companyName"
+                  value={formData.companyName}
+                  onChange={handleChange}
+                  className="pl-10 bg-gray-950 border-gray-700 text-white"
+                  placeholder="Your Company"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm text-gray-400 mb-2 block">Message</label>
+              <Textarea
+                name="message"
+                value={formData.message}
+                onChange={handleChange}
+                rows={5}
+                className="bg-gray-950 border-gray-700 text-white"
+                placeholder="Tell us what you need help with"
+              />
+            </div>
+
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-red-600 hover:bg-red-700 text-white py-6 rounded-2xl"
+            >
+              {loading ? 'Sending...' : 'Send Message'}
+            </Button>
+          </form>
+        </div>
+      </div>
+    </section>
   );
 }

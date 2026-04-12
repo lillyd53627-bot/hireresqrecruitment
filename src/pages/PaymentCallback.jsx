@@ -30,6 +30,15 @@ export default function PaymentCallback() {
       }
 
       // Verify payment with backend
+      await supabase.from("users").upsert({
+  email: user.email,
+  plan_name: "Growth",
+  max_jobs: 30,
+  max_users: 5,
+  current_jobs: 0,
+  current_users: 1,
+  video_screening: true
+});
       const response = await base44.functions.invoke('verifyRegistrationPayment', {
         reference
       });

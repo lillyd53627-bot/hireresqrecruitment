@@ -1,0 +1,183 @@
+// src/pages/Register.jsx
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Loader2 } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { toast } from 'sonner';
+
+const planDetails = {
+  starter: { name: "Starter", price: "R1,549/month", description: "Solo recruiters & small teams" },
+  growth: { name: "Growth", price: "R3,999/month", description: "Growing agencies - Most Popular" },
+  advance: { name: "Advance", price: "R7,999/month", description: "High-volume recruiters" },
+};
+
+export default function Register() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  const [loading, setLoading] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState('growth');
+
+  const [formData, setFormData] = useState({
+    fullName: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+  });
+
+  // Pre-select plan from Pricing page
+  useEffect(() => {
+    if (location.state?.selectedPlan) {
+      setSelectedPlan(location.state.selectedPlan);
+    }
+  }, [location.state]);
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (formData.password !== formData.confirmPassword) {
+      toast.error("Passwords do not match!");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const { data, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: { full_name: formData.fullName }
+        }
+      });
+
+      if (authError) {
+        toast.error(authError.message);
+        return;
+      }
+
+      const { error: dbError } = await supabase.from('users').insert({
+        id: data.user.id,
+        email: formData.email,
+        full_name: formData.fullName,
+        plan: selectedPlan,
+        plan_name: planDetails[selectedPlan].name,
+      });
+
+      if (dbError) console.error("Database insert error:", dbError);
+
+      toast.success(`Account created! Now completing your ${planDetails[selectedPlan].name} plan...`);
+
+      // Redirect to Pricing to complete payment (as per your current flow)
+      navigate('/pricing', { 
+        state: { selectedPlan } 
+      });
+
+    } catch (err) {
+      console.error(err);
+      toast.error("Registration failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const currentPlan = planDetails[selectedPlan];
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
+      <Card className="w-full max-w-lg shadow-2xl">
+        <CardHeader className="text-center pb-8">
+          <CardTitle className="text-3xl font-bold">Create Your Account</CardTitle>
+          <p className="text-gray-600 mt-2">
+            You're signing up for the <strong>{currentPlan.name}</strong> plan — {currentPlan.price}
+          </p>
+        </CardHeader>
+
+        <CardContent className="px-8 pb-8">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <Label htmlFor="fullName">Full Name</Label>
+              <Input
+                id="fullName"
+                name="fullName"
+                value={formData.fullName}
+                onChange={handleChange}
+                placeholder="John Smith"
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="email">Email Address</Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="you@company.co.za"
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="Create a strong password"
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                placeholder="Confirm your password"
+                required
+              />
+            </div>
+
+            <div className="bg-gray-100 p-4 rounded-xl">
+              <p className="text-sm text-gray-600 mb-1">Selected Plan:</p>
+              <p className="font-semibold text-lg">{currentPlan.name} — {currentPlan.price}</p>
+              <p className="text-sm text-gray-500">{currentPlan.description}</p>
+              <p className="text-xs text-green-600 mt-2 font-medium">✓ You can cancel anytime</p>
+            </div>
+
+            <Button 
+              type="submit" 
+              className="w-full h-12 text-lg bg-red-600 hover:bg-red-700"
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Creating Account...
+                </>
+              ) : (
+                `Create Account & Continue to Payment`
+              )}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

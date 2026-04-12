@@ -1,0 +1,39 @@
+PROMPTS USED IN THIS VIDEO (copy & paste these):
+
+Step 1 — Attract:
+“Find 50 [your ideal client type] in [niche/industry] with [qualifying criteria] who recently [relevant activity]. Pull their [contact info fields] into a table.”
+
+Step 2 — Convert:
+“Act as an expert in sales and marketing. Draft a personalized email to each person on this list. Reference their [recent activity/pain point]. My intro: [your value proposition]. Ask if they’d be open to a [call/demo/conversation]. Send the email and follow up every [X] days if no response, up to [X] times.”
+
+Step 2B — Auto-monitor replies:
+“Every 24 hours, review my email for replies to these outreach emails. If anyone replies with interest (not just telling us to stop), send me a notification and message me on [Slack/other platform]: ’You’ve got a reply from a potential customer.’”
+
+Step 3 — Deliver:
+“Analyze [Client Name]’s [platform/channel/website]. Review the last [time period] of [content/activity]. Find recurring patterns and insights. Focus on [specific metric/element]. What has worked and what hasn’t? Put all insights in a table.”
+
+Step 3B — Branded report:
+“Create a [deliverable type] with these insights. Go to [Client’s Website], pull their branding (colors, logo, fonts), and replicate it in the [deliverable] style. Make it look like it came from their team in terms of visual style.”
+
+Step 4 — Automate:
+Content Research: “Find my top [X] competitors in [niche/industry] on [platform]. Pull their most-viewed [content type] from the last [time period]. Analyze the topics and correlate patterns. Give me [X] [content type] ideas based on what’s working for them.”
+
+Client Feedback: “After project completion, send an NPS survey to the client. If they rate 9 or 10, ask for a referral: ‘Who else do you know struggling with [pain point]?’ Add referrals to the lead list and start the outreach sequence.”
+
+Business Insights: “Scrape reviews and feedback from all clients. Analyze: What’s working? What’s not? Where are the gaps in our process? Send me a weekly report with insights and recommendations.”
+
+Tools mentioned:
+ChatGPT: https://chat.openai.com
+Manus: https://manus.im
+Notion: https://www.notion.com
+BuddyPro: https://buddypro.ai
+
+▸▸ Subscribe to The Martell Method Newsletter: https://bit.ly/3XEBXez
+
+▸▸ Get My New Book (Buy Back Your Time): https://bit.ly/3pCTG78
+
+IG: @danmartell
+Discover how to leverage AI agents to manage business operations and generate leads without manual effort. Learn to shift from doer to director, using automation tools to handle research, outreach, and delivery.
+Summary
+
+How 

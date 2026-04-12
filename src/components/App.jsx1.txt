@@ -1,0 +1,76 @@
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+
+// Pages
+import Home from "./pages/Home";
+import Pricing from "./pages/Pricing";
+import Features from "./pages/Features";
+import Demo from "./pages/Demo";
+import Register from "./pages/Register";
+import About from "./pages/About";
+import Contact from "./pages/Contact";
+import TermsOfService from "./pages/TermsOfService";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import Security from "./pages/Security";
+import POPIA from "./pages/POPIA";
+import FAQ from "./pages/FAQ";
+
+// Feature pages
+import AIClientFinderDemo from "./pages/Features/AIClientFinderDemo";
+import AIVideoScreeningDemo from "./pages/Features/AIVideoScreeningDemo";
+import AITalentSourcingDemo from "./pages/Features/AITalentSourcingDemo";
+import AutomatedInvoicingDemo from "./pages/Features/AutomatedInvoicingDemo";
+import CandidatePortalDemo from "./pages/Features/CandidatePortalDemo";
+import ClientPortalDemo from "./pages/Features/ClientPortalDemo";
+import JobTrackerDemo from "./pages/Features/JobTrackerDemo";
+import SmartReportingDemo from "./pages/Features/SmartReportingDemo";
+import OutreachDemo from "./pages/Features/OutreachDemo";
+
+// Layout
+import Layout from "./components/Layout";
+
+function App() {
+  return (
+    <Router>
+      <Routes>
+
+        <Route element={<Layout />}>
+
+          {/* MAIN PAGES */}
+          <Route path="/" element={<Home />} />
+          <Route path="/pricing" element={<Pricing />} />
+          <Route path="/features" element={<Features />} />
+          <Route path="/demo" element={<Demo />} />
+          <Route path="/register" element={<Register />} />
+
+          {/* COMPANY */}
+          <Route path="/about" element={<About />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/faq" element={<FAQ />} />
+
+          {/* LEGAL */}
+          <Route path="/terms" element={<TermsOfService />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/security" element={<Security />} />
+          <Route path="/popia" element={<POPIA />} />
+
+          {/* 🔥 FEATURE ROUTES */}
+          <Route path="/features/client-finder" element={<AIClientFinderDemo />} />
+          <Route path="/features/video-screening" element={<AIVideoScreeningDemo />} />
+          <Route path="/features/talent-sourcing" element={<AITalentSourcingDemo />} />
+          <Route path="/features/invoicing" element={<AutomatedInvoicingDemo />} />
+          <Route path="/features/candidate-portal" element={<CandidatePortalDemo />} />
+          <Route path="/features/client-portal" element={<ClientPortalDemo />} />
+          <Route path="/features/job-tracker" element={<JobTrackerDemo />} />
+          <Route path="/features/reporting" element={<SmartReportingDemo />} />
+          <Route path="/features/outreach" element={<OutreachDemo />} />
+
+          {/* 404 */}
+          <Route path="*" element={<div className="p-20 text-center text-3xl">404 Page Not Found</div>} />
+
+        </Route>
+      </Routes>
+    </Router>
+  );
+}
+
+export default App;

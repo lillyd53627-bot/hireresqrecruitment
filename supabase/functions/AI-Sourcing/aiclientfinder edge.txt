@@ -1,0 +1,61 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  try {
+    const { query } = await req.json();
+
+    if (!query) {
+      return new Response(JSON.stringify({ clients: [] }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400
+      });
+    }
+
+    const supabase = createClient(
+      'https://tlzipklqaxiupbhggbnm.supabase.co',
+      'eb1120b64bb69f38ee3e05f549cf7719d8e02f968f0f3a70440d871ee6c5db17'
+    );
+
+    const searchTerm = query.toLowerCase().trim();
+
+    const { data, error } = await supabase
+      .from('clients')           // Change to 'companies' if your table name is 'companies'
+      .select('*')
+      .or(`name.ilike.%${searchTerm}%,industry.ilike.%${searchTerm}%,location.ilike.%${searchTerm}%`)
+      .limit(20);
+
+    if (error) {
+      console.error("Database error:", error);
+      return new Response(JSON.stringify({ clients: [], error: error.message }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500
+      });
+    }
+
+    const clientsWithScore = (data || []).map((c, index) => ({
+      ...c,
+      lead_score: c.lead_score || Math.max(65, 92 - index * 4)
+    }));
+
+    return new Response(JSON.stringify({ clients: clientsWithScore }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 200
+    });
+
+  } catch (err) {
+    console.error("Edge Function error:", err);
+    return new Response(JSON.stringify({ clients: [], error: err.message }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 500
+    });
+  }
+});

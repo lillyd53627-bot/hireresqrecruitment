@@ -1,0 +1,11 @@
+id,name,industry,location,website,email,phone,lead_score
+,Acme Corporation,Technology,Johannesburg,https://acmecorp.co.za,info@acmecorp.co.za,0115551234,78
+,TechSolutions Africa,Software,Cape Town,https://techsolutions.co.za,hello@techsolutions.co.za,0215556789,85
+,Standard Bank Group,Banking,Johannesburg,https://standardbank.co.za,info@standardbank.co.za,0115550001,92
+,Nedbank Limited,Banking,Cape Town,https://nedbank.co.za,contact@nedbank.co.za,0215551000,88
+,Shoprite Holdings,Retail,Cape Town,https://shoprite.co.za,info@shoprite.co.za,0215552000,75
+,MTN South Africa,Telecommunications,Johannesburg,https://mtn.co.za,corporate@mtn.co.za,0115553000,90
+,Pick n Pay Stores,Retail,Johannesburg,https://picknpay.co.za,info@picknpay.co.za,0115554000,82
+,Anglo American, Mining,Johannesburg,https://angloamerican.com,info@angloamerican.com,0115555000,79
+,Sasol Limited,Chemicals,Johannesburg,https://sasol.com,contact@sasol.com,0115556000,84
+,Discovery Limited,Insurance,Johannesburg,https://discovery.co.za,info@discovery.co.za,0115557000,87

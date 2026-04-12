@@ -1,243 +1,159 @@
-import React, { useState } from 'react';
-// import { base44 } from "../api/base44Client";
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import Sidebar from '../../components/Dashboard/Sidebar';
-import TopBar from '../../components/Dashboard/TopBar';
-import { Button } from "../../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
-import { Badge } from "../../components/ui/badge";
-
-import { Progress } from '../../components/ui/progress';
+// src/pages/Dashboard/OnboardingWorkflows.jsx
+import React, { useState, useEffect } from 'react';
+import { useOutletContext, useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Users, FileText, CheckCircle2, Clock, Send, Mail,
-  TrendingUp, AlertCircle, Sparkles, UserCheck, Plus
+import { 
+  Users, FileText, CheckCircle2, Clock, Send, TrendingUp, AlertCircle, Plus 
 } from 'lucide-react';
-import CreateOnboardingDialog from '../../components/onboarding/CreateOnboardingDialog';
-import OnboardingDetailsDialog from '../../components/onboarding/OnboardingDetailsDialog';
-import AIOnboardingAssistant from '../../components/onboarding/AIOnboardingAssistant';
+import { supabase } from '@/lib/supabase';
+import { toast } from 'sonner';
 
 export default function OnboardingWorkflows() {
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const [selectedOnboarding, setSelectedOnboarding] = useState(null);
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const { currentPlan } = useOutletContext();
+  const navigate = useNavigate();
+
+  const [onboardings, setOnboardings] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
-  const queryClient = useQueryClient();
 
-  const { data: onboardings = [], isLoading } = useQuery({
-    queryKey: ['onboardings'],
-    queryFn: () => base44.entities.Onboarding.list('-created_date'),
-  });
+  // Paid user gate
+  if (!['growth', 'advance'].includes(currentPlan?.plan || '')) {
+    return (
+      <div className="text-center py-20">
+        <div className="mx-auto w-20 h-20 bg-blue-100 rounded-2xl flex items-center justify-center mb-8">
+          <Users className="w-10 h-10 text-blue-600" />
+        </div>
+        <h2 className="text-4xl font-bold mb-4">Onboarding Workflows</h2>
+        <p className="text-xl text-gray-600 max-w-md mx-auto mb-10">
+          Automate offer letters, document collection, background checks and new hire onboarding.
+        </p>
+        <Button onClick={() => navigate('/pricing')} className="bg-red-600 hover:bg-red-700">
+          Upgrade to Unlock Onboarding Automation
+        </Button>
+      </div>
+    );
+  }
 
-  const statusConfig = {
-    offer_pending: { label: 'Offer Pending', color: 'bg-yellow-100 text-yellow-700', icon: Clock },
-    offer_sent: { label: 'Offer Sent', color: 'bg-blue-100 text-blue-700', icon: Send },
-    offer_accepted: { label: 'Offer Accepted', color: 'bg-green-100 text-green-700', icon: CheckCircle2 },
-    docs_collection: { label: 'Collecting Docs', color: 'bg-purple-100 text-purple-700', icon: FileText },
-    background_check: { label: 'Background Check', color: 'bg-orange-100 text-orange-700', icon: AlertCircle },
-    onboarding_complete: { label: 'Complete', color: 'bg-emerald-100 text-emerald-700', icon: UserCheck },
-    declined: { label: 'Declined', color: 'bg-red-100 text-red-700', icon: AlertCircle }
+  // Load onboardings from Supabase
+  const loadOnboardings = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('onboardings')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setOnboardings(data || []);
+    } catch (error) {
+      console.error('Failed to load onboardings:', error);
+      toast.error('Failed to load onboarding workflows');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  useEffect(() => {
+    loadOnboardings();
+  }, []);
 
   const filteredOnboardings = activeTab === 'all' 
     ? onboardings 
     : onboardings.filter(o => o.status === activeTab);
 
-  const stats = {
-    total: onboardings.length,
-    active: onboardings.filter(o => !['onboarding_complete', 'declined'].includes(o.status)).length,
-    pending_docs: onboardings.filter(o => o.status === 'docs_collection').length,
-    completed: onboardings.filter(o => o.status === 'onboarding_complete').length
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'offer_accepted': return 'bg-green-100 text-green-700';
+      case 'onboarding_complete': return 'bg-emerald-100 text-emerald-700';
+      case 'declined': return 'bg-red-100 text-red-700';
+      default: return 'bg-amber-100 text-amber-700';
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar isCollapsed={isCollapsed} onToggle={() => setIsCollapsed(!isCollapsed)} />
-      
-      <main className={`flex-1 transition-all duration-300 ${isCollapsed ? 'ml-20' : 'ml-64'}`}>
-        <TopBar
-          title="Onboarding Workflows"
-          subtitle="AI-powered candidate onboarding automation"
-        />
-
-        <div className="p-6 space-y-6">
-          {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600">Total Onboarding</p>
-                    <p className="text-3xl font-bold">{stats.total}</p>
-                  </div>
-                  <Users className="w-8 h-8 text-blue-600" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600">Active</p>
-                    <p className="text-3xl font-bold text-orange-600">{stats.active}</p>
-                  </div>
-                  <TrendingUp className="w-8 h-8 text-orange-600" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600">Pending Docs</p>
-                    <p className="text-3xl font-bold text-purple-600">{stats.pending_docs}</p>
-                  </div>
-                  <FileText className="w-8 h-8 text-purple-600" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600">Completed</p>
-                    <p className="text-3xl font-bold text-green-600">{stats.completed}</p>
-                  </div>
-                  <CheckCircle2 className="w-8 h-8 text-green-600" />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold">Onboarding Pipeline</h2>
-            <Button 
-              onClick={() => setShowCreateDialog(true)}
-              className="bg-red-600 hover:bg-red-700 gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Start Onboarding
-            </Button>
-          </div>
-
-          {/* AI Assistant */}
-          <AIOnboardingAssistant />
-
-          {/* Tabs */}
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList>
-              <TabsTrigger value="all">All ({onboardings.length})</TabsTrigger>
-              <TabsTrigger value="offer_sent">Offer Sent</TabsTrigger>
-              <TabsTrigger value="docs_collection">Docs Collection</TabsTrigger>
-              <TabsTrigger value="background_check">Background Check</TabsTrigger>
-              <TabsTrigger value="onboarding_complete">Complete</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value={activeTab} className="space-y-4 mt-6">
-              {isLoading ? (
-                <Card>
-                  <CardContent className="py-12 text-center">
-                    <p className="text-gray-500">Loading onboarding records...</p>
-                  </CardContent>
-                </Card>
-              ) : filteredOnboardings.length === 0 ? (
-                <Card>
-                  <CardContent className="py-12 text-center">
-                    <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500">No onboarding records found</p>
-                    <Button 
-                      onClick={() => setShowCreateDialog(true)}
-                      variant="outline"
-                      className="mt-4"
-                    >
-                      Start First Onboarding
-                    </Button>
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="grid gap-4">
-                  {filteredOnboardings.map((onboarding) => {
-                    const StatusIcon = statusConfig[onboarding.status]?.icon || Clock;
-                    const pendingDocs = onboarding.documents_required?.filter(d => d.status === 'pending').length || 0;
-                    
-                    return (
-                      <Card 
-                        key={onboarding.id} 
-                        className="hover:shadow-lg transition-shadow cursor-pointer"
-                        onClick={() => setSelectedOnboarding(onboarding)}
-                      >
-                        <CardContent className="p-6">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3 mb-2">
-                                <h3 className="text-lg font-semibold">{onboarding.candidate_name}</h3>
-                                <Badge className={statusConfig[onboarding.status]?.color}>
-                                  <StatusIcon className="w-3 h-3 mr-1" />
-                                  {statusConfig[onboarding.status]?.label}
-                                </Badge>
-                              </div>
-                              <p className="text-sm text-gray-600 mb-1">{onboarding.job_title} at {onboarding.company}</p>
-                              <p className="text-xs text-gray-500">{onboarding.candidate_email}</p>
-                              
-                              <div className="mt-4 space-y-2">
-                                <div className="flex items-center justify-between text-sm">
-                                  <span className="text-gray-600">Onboarding Progress</span>
-                                  <span className="font-medium">{onboarding.onboarding_progress || 0}%</span>
-                                </div>
-                                <Progress value={onboarding.onboarding_progress || 0} className="h-2" />
-                              </div>
-
-                              <div className="mt-4 flex gap-4 text-sm">
-                                {onboarding.start_date && (
-                                  <div className="flex items-center gap-1 text-gray-600">
-                                    <Clock className="w-4 h-4" />
-                                    Start: {new Date(onboarding.start_date).toLocaleDateString()}
-                                  </div>
-                                )}
-                                {pendingDocs > 0 && (
-                                  <div className="flex items-center gap-1 text-orange-600">
-                                    <FileText className="w-4 h-4" />
-                                    {pendingDocs} docs pending
-                                  </div>
-                                )}
-                              </div>
-
-                              {onboarding.next_action && (
-                                <div className="mt-3 p-2 bg-blue-50 rounded text-sm text-blue-700">
-                                  <strong>Next:</strong> {onboarding.next_action}
-                                </div>
-                              )}
-                            </div>
-
-                            <Button variant="outline" size="sm">
-                              View Details
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
-              )}
-            </TabsContent>
-          </Tabs>
+    <div className="space-y-8">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold">Onboarding Workflows</h1>
+          <p className="text-gray-600">Automate new hire onboarding from offer to first day</p>
         </div>
-      </main>
+        <Button className="bg-red-600 hover:bg-red-700 gap-2">
+          <Plus className="w-4 h-4" />
+          New Onboarding
+        </Button>
+      </div>
 
-      {showCreateDialog && (
-        <CreateOnboardingDialog
-          open={showCreateDialog}
-          onClose={() => setShowCreateDialog(false)}
-        />
-      )}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="all">All</TabsTrigger>
+          <TabsTrigger value="offer_pending">Offer Pending</TabsTrigger>
+          <TabsTrigger value="offer_accepted">Offer Accepted</TabsTrigger>
+          <TabsTrigger value="docs_collection">Docs Collection</TabsTrigger>
+          <TabsTrigger value="onboarding_complete">Completed</TabsTrigger>
+        </TabsList>
 
-      {selectedOnboarding && (
-        <OnboardingDetailsDialog
-          open={!!selectedOnboarding}
-          onClose={() => setSelectedOnboarding(null)}
-          onboarding={selectedOnboarding}
-        />
-      )}
+        <TabsContent value={activeTab} className="mt-6">
+          {loading ? (
+            <div className="text-center py-12">Loading onboarding workflows...</div>
+          ) : filteredOnboardings.length === 0 ? (
+            <Card>
+              <CardContent className="text-center py-16">
+                <Users className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+                <p className="text-gray-600">No onboarding workflows found.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-6">
+              {filteredOnboardings.map((onboarding) => (
+                <Card key={onboarding.id} className="hover:shadow-md transition-all">
+                  <CardContent className="p-6 flex flex-col md:flex-row gap-6 justify-between">
+                    <div className="flex gap-4">
+                      <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <Users className="w-6 h-6 text-blue-600" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-lg">{onboarding.candidate_name}</h3>
+                        <p className="text-gray-600">{onboarding.job_title} • {onboarding.company}</p>
+                        <p className="text-sm text-gray-500 mt-1">
+                          Start: {onboarding.start_date || 'Not set'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-8 flex-wrap">
+                      <div className="text-center">
+                        <p className="text-sm text-gray-500">Progress</p>
+                        <div className="font-bold text-xl text-blue-600">
+                          {onboarding.onboarding_progress || 0}%
+                        </div>
+                        <Progress value={onboarding.onboarding_progress || 0} className="w-24 mt-1" />
+                      </div>
+
+                      <Badge className={getStatusColor(onboarding.status)}>
+                        {onboarding.status.replace('_', ' ')}
+                      </Badge>
+
+                      {onboarding.next_action && (
+                        <div className="text-sm max-w-[180px]">
+                          <span className="font-medium">Next:</span> {onboarding.next_action}
+                        </div>
+                      )}
+
+                      <Button variant="outline" size="sm">
+                        View Details
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

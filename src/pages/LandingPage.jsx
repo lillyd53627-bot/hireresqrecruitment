@@ -5,6 +5,35 @@ import { ArrowRight, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';   // ← ADD THIS LINE
 
+<div className="text-center max-w-3xl mx-auto px-6 py-16">
+  <h2 className="text-4xl font-bold mb-6">
+    Stop chasing clients.<br />
+    Let AI find them for you.
+  </h2>
+  <p className="text-xl text-gray-600 mb-10">
+    Post jobs or run AI client-finding campaigns — same credits, double the results.<br />
+    <span className="font-semibold text-red-600">Only 12 spots left at launch pricing.</span>
+  </p>
+
+  <div className="flex flex-col sm:flex-row gap-4 justify-center">
+    <a
+      href="/pricing"
+      className="bg-red-600 hover:bg-red-700 text-white text-lg font-semibold px-12 py-5 rounded-2xl transition-all"
+    >
+      Claim My Launch Spot Now
+    </a>
+    <a
+      href="https://wa.me/27123456789?text=Hi%20HireResQ%20team,%20I'm%20ready%20to%20claim%20my%20launch%20spot"
+      target="_blank"
+      className="border-2 border-white text-white hover:bg-white hover:text-gray-900 text-lg font-semibold px-10 py-5 rounded-2xl transition-all flex items-center gap-3"
+    >
+      <MessageCircle size={24} />
+      Chat on WhatsApp
+    </a>
+  </div>
+
+  <p className="text-xs text-gray-500 mt-6">No credit card required • Cancel anytime • 7-day free trial</p>
+</div>
 const fadeInUp = {
   inimate: { opacity: 1, y: 0 },
   transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] }
@@ -44,6 +73,46 @@ export default function Landing() {
             animate="animate"
             className="flex flex-wrap justify-center gap-6"
           >
+            import { useState, useEffect } from "react";
+
+export default function LimitedOfferBanner() {
+  const [spotsLeft, setSpotsLeft] = useState(12);
+
+  // Fake countdown (decreases every 30 seconds for demo)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setSpotsLeft((prev) => (prev > 3 ? prev - 1 : 3));
+    }, 30000); // every 30 seconds
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="bg-gradient-to-r from-red-600 to-red-700 text-white py-4 px-6 text-center shadow-xl">
+      <div className="max-w-4xl mx-auto">
+        <p className="text-sm uppercase tracking-widest font-medium mb-1">Limited Launch Offer</p>
+        <h3 className="text-2xl font-bold mb-2">
+          We’re only onboarding <span className="text-yellow-300">50 clients</span> at this special rate
+        </h3>
+        <div className="flex items-center justify-center gap-3 text-xl">
+          <span>Only</span>
+          <span className="bg-white text-red-700 font-bold px-5 py-1 rounded-full text-3xl tabular-nums">
+            {spotsLeft}
+          </span>
+          <span>spots remaining</span>
+        </div>
+        <p className="mt-3 text-sm opacity-90">
+          Once these spots are filled, prices increase and we close the launch cohort.
+        </p>
+        <a
+          href="/pricing"
+          className="mt-6 inline-block bg-white text-red-700 hover:bg-yellow-300 hover:text-red-700 font-semibold px-10 py-3.5 rounded-xl text-lg transition-all"
+        >
+          Secure My Spot Before It’s Gone →
+        </a>
+      </div>
+    </div>
+  );
+}
             <Link to="/pricing">
               <Button size="lg" className="bg-red-600 hover:bg-red-700 text-white px-10 py-7 text-xl">
                 Get Started

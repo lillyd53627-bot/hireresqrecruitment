@@ -54,7 +54,7 @@ export default function Landing() {
   const pricingPlans = [
     {
       name: 'Starter',
-      price: 1549,
+      price: 1,549,
       displayPrice: 'R1,549',
       period: '/month',
       subtitle: 'Solo recruiters & small teams getting started',
@@ -76,7 +76,7 @@ export default function Landing() {
     },
     {
       name: 'Growth',
-      price: 3999,
+      price: 3,999,
       displayPrice: 'R3,999',
       period: '/month',
       subtitle: 'Growing agencies',
@@ -96,7 +96,7 @@ export default function Landing() {
     },
     {
       name: 'Advance',
-      price: 7999,
+      price: 7,999,
       displayPrice: 'R7,999',
       period: '/month',
       subtitle: 'High-volume recruiters & talent partners',
@@ -116,7 +116,7 @@ export default function Landing() {
     },
     {
       name: 'Pro',
-      price: 14999,
+      price: 14,999,
       displayPrice: 'R14,999',
       period: '/month',
       subtitle: 'Agencies & recruitment brands',

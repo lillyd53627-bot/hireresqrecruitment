@@ -1,0 +1,16 @@
+{isLoggedIn && (
+  <Link to="/dashboard" className="font-medium">
+    Dashboard
+  </Link>
+)}
+
+Uncaught SyntaxError: The requested module '/src/components/ProtectedRoute' does not provide an export named 'default' (at App.jsx:32:8
+
+HireResQ AI - Your automated hiring department that helps recruiters source, screen, interview, and shortlist candidates with 70% less effort
+
+
+Uncaught SyntaxError: The requested module '/src/components/ProtectedRoute' does not provide an export named 'default' (at App.jsx:32:8
+
+HireResQ AI
+Your Automated Hiring Department
+Recruitment that runs itself. AI finds clients for you. AI finds candidates for you. You focus on results, we automate the work.

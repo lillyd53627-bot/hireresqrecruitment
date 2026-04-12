@@ -12,19 +12,29 @@ import {
   Building2,
   ChevronRight,
   UserCircle,
+  Target,
+  Settings,
+  Shield,           // Added for Admin
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const menuItems = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/Dashboard" },
-  { icon: Sparkles, label: "AI Assistant", path: "/Dashboard/aiassistant" },
-  { icon: Search, label: "AI Sourcing", path: "/Dashboard/aisourcing" },
-  { icon: Users, label: "Candidates", path: "/Dashboard/candidates" },
-  { icon: Briefcase, label: "Jobs", path: "/Dashboard/jobs" },
-  { icon: Building2, label: "Clients", path: "/Dashboard/clients" },
-  { icon: Mail, label: "Outreach", path: "/Dashboard/outreach" },
-  { icon: Video, label: "Interviews", path: "/Dashboard/interviews" },
-  { icon: BarChart3, label: "Analytics", path: "/Dashboard/analytics" },
+  { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
+  { icon: Sparkles, label: "AI Assistant", path: "/dashboard/aiassistant" },
+  { icon: Search, label: "AI Sourcing", path: "/dashboard/aisourcing" },
+  { icon: Users, label: "Candidates", path: "/dashboard/candidates" },
+  { icon: Briefcase, label: "Jobs", path: "/dashboard/jobs" },
+  { icon: Building2, label: "Clients", path: "/dashboard/clients" },
+  { icon: Mail, label: "Outreach", path: "/dashboard/outreach" },
+  { icon: Video, label: "Interviews", path: "/dashboard/interviews" },
+  { icon: BarChart3, label: "Analytics", path: "/dashboard/analytics" },
+  { icon: Target, label: "AI Client Finder", path: "/dashboard/aiclientfinder" },
+  { icon: Users, label: "Onboarding", path: "/dashboard/onboardingworkflows" },
+  
+  // Admin Dashboard Link
+  { icon: Shield, label: "Admin Dashboard", path: "/dashboard/admin" },
+  
+  { icon: Settings, label: "Settings", path: "/dashboard/settings" },
 ];
 
 export default function Sidebar({ isCollapsed, onToggle }) {
@@ -55,7 +65,8 @@ export default function Sidebar({ isCollapsed, onToggle }) {
         />
       </button>
 
-      <nav className="flex-1 px-3 py-4">
+      {/* Scrollable navigation area - prevents cutoff */}
+      <nav className="flex-1 px-3 py-4 overflow-y-auto">
         <ul className="space-y-1">
           {menuItems.map((item) => (
             <li key={item.path}>
@@ -80,21 +91,21 @@ export default function Sidebar({ isCollapsed, onToggle }) {
             </li>
           ))}
         </ul>
+      </nav>
 
-        {!isCollapsed && (
-          <div className="mt-6 mx-3 p-4 bg-white/5 rounded-xl">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-red-600/20 rounded-full flex items-center justify-center flex-shrink-0">
-                <UserCircle className="w-6 h-6 text-red-500" />
-              </div>
-              <div className="min-w-0">
-                <div className="font-medium text-sm truncate">John Recruiter</div>
-                <div className="text-xs text-gray-400">Pro Plan</div>
-              </div>
+      {!isCollapsed && (
+        <div className="mt-6 mx-3 p-4 bg-white/5 rounded-xl">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-red-600/20 rounded-full flex items-center justify-center flex-shrink-0">
+              <UserCircle className="w-6 h-6 text-red-500" />
+            </div>
+            <div className="min-w-0">
+              <div className="font-medium text-sm truncate">John Recruiter</div>
+              <div className="text-xs text-gray-400">Pro Plan</div>
             </div>
           </div>
-        )}
-      </nav>
+        </div>
+      )}
     </aside>
   );
 }

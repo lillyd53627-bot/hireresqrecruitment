@@ -1,17 +1,13 @@
-import React, { useEffect } from 'react';
+const DashboardLayout = ({ children }) => {
+  return (
+    <>
+      <Header />
+      <main>
+        {children}   {/* THIS IS CRITICAL */}
+      </main>
+      <Footer />
+    </>
+  );
+};
 
-export default function Layout({ children }) {
-  useEffect(() => {
-    // Load Paystack inline script
-    const script = document.createElement('script');
-    script.src = 'https://js.paystack.co/v1/inline.js';
-    script.async = true;
-    document.body.appendChild(script);
-
-    return () => {
-      document.body.removeChild(script);
-    };
-  }, []);
-
-  return <>{children}</>;
-}
+export default DashboardLayout;

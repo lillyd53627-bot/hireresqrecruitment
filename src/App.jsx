@@ -1,99 +1,136 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, Link, Navigate } from 'react-router-dom';
+// src/App.jsx
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 
-// Public / marketing pages
-import LandingPage from './pages/LandingPage';
-import Pricing from './pages/Pricing';
-import Register from './pages/Register';
+// Public Pages
+import Home from "./pages/Home";
+import Pricing from "./pages/Pricing";
+import Register from "./pages/Register";
 
-// Feature demo pages (public / standalone)
-import AIClientFinderDemo from './pages/features/AIClientFinderDemo';
-import AITalentSourcingDemo from './pages/features/AITalentSourcingDemo';
-import SmartReportingDemo from './pages/features/SmartReportingDemo';
-import AutomatedInvoicingDemo from './pages/features/AutomatedInvoicingDemo';
-import CandidatePortalDemo from './pages/features/CandidatePortalDemo';
-import OutreachDemo from './pages/features/OutreachDemo.jsx';
-import AIVideoScreeningDemo from './pages/features/AIVideoScreeningDemo.jsx';
-import JobTrackerDemo from './pages/features/JobTrackerDemo.jsx';
-import ClientPortalDemo from './pages/features/ClientPortalDemo.jsx';
-import Demo from './pages//Demo';  // or adjust path if you placed it elsewhere
-
-
-// Dashboard layout + pages
-import DashboardLayout from './components/Dashboard/DashboardLayout';
-import Dashboard from './pages/Dashboard/Dashboard';
-import Clients from './pages/Dashboard/Clients';
-import Jobs from './pages/Dashboard/Jobs';
-import Candidates from './pages/Dashboard/Candidates';
-import Companies from './pages/Dashboard/Companies';
-import AIAssistant from './pages/Dashboard/AIAssistant';
-import Interviews from './pages/Dashboard/Interviews';
-import Settings from './pages/Dashboard/Settings';
-import Analytics from './pages/Dashboard/Analytics';
-import OnboardingWorkflows from './pages/Dashboard/OnboardingWorkflows';
+// Company & Legal Pages
+import About from "./pages/About";
 import Contact from "./pages/Contact";
+import FAQ from "./pages/FAQ";
+import TermsOfService from "./pages/TermsOfService";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import Security from "./pages/Security";
+import POPIA from "./pages/POPIA";
+import Demo from "./pages/Demo";
 
-export default function App() {
+// Feature Demo Pages (public)
+import AIClientFinderDemo from "./pages/FeaturesDemo/AIClientFinderDemo";
+import AIOutreachDemo from "./pages/FeaturesDemo/AIOutreachDemo";
+import AITalentSourcingDemo from "./pages/FeaturesDemo/AITalentSourcingDemo";
+import AIVideoScreeningDemo from "./pages/FeaturesDemo/AIVideoScreeningDemo";
+import AISmartReportingDemo from "./pages/FeaturesDemo/AISmartReportingDemo";
+import AIAssistantDemo from "./pages/FeaturesDemo/AIAssistantdemo";
+import AutomatedInvoicingDemo from "./pages/FeaturesDemo/AIAutomatedInvoicingDemo";
+import CandidatePortalDemo from "./pages/FeaturesDemo/CandidatePortalDemo";
+import ClientPortalDemo from "./pages/FeaturesDemo/ClientPortalDemo";
+import JobTrackerDemo from "./pages/FeaturesDemo/JobTrackerDemo";
+
+// Payment & Login
+import PaymentSuccess from "./pages/PaymentSuccess";
+import Login from "./pages/Login";
+
+// Dashboard Layout
+import DashboardLayout from "./components/Dashboard/DashboardLayout";
+import Dashboard from "./pages/Dashboard/Dashboard";
+import AdminDashboard from "./pages/Dashboard/AdminDashboard";
+
+// === REAL DASHBOARD PAGES ===
+import AIAssistant from "./pages/Dashboard/AIAssistant";
+import AISourcing from "./pages/Dashboard/AISourcing";
+import Candidates from "./pages/Dashboard/Candidates";
+import JobTracker from "./pages/Dashboard/JobTracker";
+import AIClientFinder from "./pages/Dashboard/AIClientFinder";
+import Clients from "./pages/Dashboard/Clients";
+import Outreach from "./pages/Dashboard/Outreach";
+import Interviews from "./pages/Dashboard/Interviews";
+import AISmartReporting from "./pages/Dashboard/AISmartReporting";
+import OnboardingWorkflows from "./pages/Dashboard/OnboardingWorkflows";
+import Settings from "./pages/Dashboard/Settings";
+
+function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter
+      future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true,
+      }}
+    >
       <Routes>
-
-        {/* Public pages – no layout */}
-        <Route path="/" element={<LandingPage />} />
+        {/* Public Routes */}
+        <Route path="/" element={<Home />} />
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/payment-success" element={<PaymentSuccess />} />
+        <Route path="/login" element={<Login />} />
 
-        {/* Public demo pages – standalone (no dashboard layout) */}
+        {/* Header/Footer Links */}
+        <Route path="/features" element={<Demo />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/contact" element={<Contact />} />
+        <Route path="/faq" element={<FAQ />} />
         <Route path="/demo" element={<Demo />} />
+
+        {/* Legal Pages */}
+        <Route path="/terms" element={<TermsOfService />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/security" element={<Security />} />
+        <Route path="/popia" element={<POPIA />} />
+
+        {/* Public Feature Demos */}
         <Route path="/demo/ai-client-finder" element={<AIClientFinderDemo />} />
+        <Route path="/demo/ai-outreach-engine" element={<AIOutreachDemo />} />
         <Route path="/demo/ai-talent-sourcing" element={<AITalentSourcingDemo />} />
         <Route path="/demo/ai-video-screening" element={<AIVideoScreeningDemo />} />
-        <Route path="/demo/smart-reporting" element={<SmartReportingDemo />} />
+        <Route path="/demo/smart-reporting" element={<AISmartReportingDemo />} />
+        <Route path="/demo/ai-assistant" element={<AIAssistantDemo />} />
         <Route path="/demo/automated-invoicing" element={<AutomatedInvoicingDemo />} />
-        <Route path="/demo/crm-job-tracker" element={<JobTrackerDemo />} />
-        <Route path="/demo/client-portal" element={<ClientPortalDemo />} />
         <Route path="/demo/candidate-portal" element={<CandidatePortalDemo />} />
-        <Route path="/demo/outreach" element={<OutreachDemo />} />
-        
+        <Route path="/demo/client-portal" element={<ClientPortalDemo />} />
+        <Route path="/demo/job-tracker" element={<JobTrackerDemo />} />
 
-        {/* Protected dashboard routes – with layout */}
-        <Route element={<DashboardLayout />}>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/dashboard/clients" element={<Clients />} />
-          <Route path="/dashboard/jobs" element={<Jobs />} />
-          <Route path="/dashboard/candidates" element={<Candidates />} />
-          <Route path="/dashboard/companies" element={<Companies />} />
-          <Route path="/dashboard/aiassistant" element={<AIAssistant />} />
-          <Route path="/dashboard/interviews" element={<Interviews />} />
-          <Route path="/dashboard/settings" element={<Settings />} />
-          <Route path="/dashboard/analytics" element={<Analytics />} />
-          <Route path="/dashboard/onboardingworkflows" element={<OnboardingWorkflows />} />
+        {/* REAL DASHBOARD */}
+        <Route path="/dashboard" element={<DashboardLayout />}>
+          <Route index element={<Dashboard />} />
+          <Route path="aiassistant" element={<AIAssistant />} />
+          <Route path="aisourcing" element={<AISourcing />} />
+          <Route path="candidates" element={<Candidates />} />
+          <Route path="jobs" element={<JobTracker />} />
+          <Route path="aiclientfinder" element={<AIClientFinder />} />
+          <Route path="admin" element={<AdminDashboard />} />
+
+          <Route path="clients" element={<Clients />} />
+          <Route path="outreach" element={<Outreach />} />
+
+          <Route path="interviews" element={<Interviews />} />
+          <Route path="analytics" element={<AISmartReporting />} />
+          <Route path="onboardingworkflows" element={<OnboardingWorkflows />} />
+          <Route path="settings" element={<Settings />} />
         </Route>
-        <Route path="/contact" element={<Contact />} />
 
-        {/* Catch-all 404 */}
+        {/* 404 */}
         <Route
           path="*"
           element={
             <div className="min-h-screen flex items-center justify-center bg-gray-50">
-              <div className="text-center px-4">
-                <h1 className="text-6xl font-bold text-red-600 mb-4">404</h1>
-                <p className="text-2xl font-semibold text-gray-800 mb-2">Page Not Found</p>
-                <p className="text-gray-600 mb-6">
-                  The page you're looking for doesn't exist or has been moved.
-                </p>
-                <Link
-                  to="/"
-                  className="inline-flex items-center px-6 py-3 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors"
+              <div className="text-center">
+                <h1 className="text-6xl font-bold text-gray-800">404</h1>
+                <p className="text-2xl text-gray-600 mt-4">Page Not Found</p>
+                <a
+                  href="/"
+                  className="mt-8 inline-block bg-red-600 text-white px-8 py-4 rounded-2xl hover:bg-red-700"
                 >
-                  Go back to Home
-                </Link>
+                  Back to Home
+                </a>
               </div>
             </div>
           }
         />
-
       </Routes>
     </BrowserRouter>
   );
 }
+
+export default App;

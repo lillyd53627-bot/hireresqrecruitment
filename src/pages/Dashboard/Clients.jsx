@@ -1,3 +1,4 @@
+// src/pages/Dashboard/Clients.jsx   (or wherever your Clients page is)
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 

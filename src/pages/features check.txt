@@ -1,0 +1,37 @@
+// src/pages/Features.jsx
+
+import AIClientFinderDemo from "./FeaturesDemo/AIClientFinderDemo";
+import AIVideoScreeningDemo from "./FeaturesDemo/AIVideoScreeningDemo";
+import AITalentSourcingDemo from "./FeaturesDemo/AITalentSourcingDemo";
+import AIAutomatedInvoicingDemo from "./FeaturesDemo/AIAutomatedInvoicingDemo";
+import CandidatePortalDemo from "./FeaturesDemo/CandidatePortalDemo";
+import ClientPortalDemo from "./FeaturesDemo/ClientPortalDemo";
+import JobTrackerDemo from "./FeaturesDemo/JobTrackerDemo";
+import AISmartReportingDemo from "./FeaturesDemo/AISmartReportingDemo";
+import AIOutreachDemo from "./FeaturesDemo/AIOutreachDemo";
+
+export default function FeaturesDemo() {
+  return (
+    <div className="max-w-6xl mx-auto px-6 py-16">
+
+      <h1 className="text-4xl font-bold text-center mb-12">
+        Our Features
+      </h1>
+
+      <div className="grid md:grid-cols-2 gap-10">
+
+        <AIClientFinderDemo />
+        <AITalentSourcingDemo />
+        <AIVideoScreeningDemo />
+        <AIAutomatedInvoicingDemo />
+        <CandidatePortalDemo />
+        <ClientPortalDemo />
+        <AISmartReportingDemo />
+        <JobTrackerDemo />
+        <AIOutreachDemo />
+
+      </div>
+
+    </div>
+  );
+}

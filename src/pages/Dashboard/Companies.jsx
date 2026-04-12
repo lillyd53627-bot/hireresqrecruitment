@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { base44 } from '@/lib/mockBase44';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+// src/pages/Dashboard/ClientPortal.jsx   // or Companies.jsx - use whichever name you prefer
+import React, { useState } from 'react';
+import { useOutletContext, useNavigate } from 'react-router-dom';
 import { 
-  Plus, Search, Building2, Globe, Users, MapPin, Edit, Trash2, ExternalLink
+  Building2, Globe, Users, MapPin, Edit, Trash2, Plus, ExternalLink 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,12 +12,36 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import Sidebar from '@/components/Dashboard/Sidebar';
-import TopBar from '@/components/Dashboard/TopBar';
+import { supabase } from '../../lib/supabase';
 import { toast } from 'sonner';
 
-export default function Companies() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+export default function ClientPortal() {
+  const { currentPlan } = useOutletContext();
+  const navigate = useNavigate();
+
+  const hasClientPortal = ['growth', 'advance'].includes(currentPlan?.plan || '');
+
+  // Upgrade gate
+  if (!hasClientPortal) {
+    return (
+      <div className="text-center py-20">
+        <div className="mx-auto w-20 h-20 bg-purple-100 rounded-2xl flex items-center justify-center mb-8">
+          <Building2 className="w-10 h-10 text-purple-600" />
+        </div>
+        <h2 className="text-4xl font-bold mb-4">Client Portal</h2>
+        <p className="text-xl text-gray-600 max-w-md mx-auto mb-10">
+          White-label client portal for your clients to track jobs, candidates, and progress in real time.
+        </p>
+        <Button 
+          onClick={() => navigate('/pricing')} 
+          className="bg-red-600 hover:bg-red-700 text-lg px-10 py-6"
+        >
+          Upgrade to Growth or Advance
+        </Button>
+      </div>
+    );
+  }
+
   const [showDialog, setShowDialog] = useState(false);
   const [editingCompany, setEditingCompany] = useState(null);
   const [formData, setFormData] = useState({
@@ -31,43 +54,54 @@ export default function Companies() {
     logo_url: '',
     description: '',
     culture_description: '',
-    benefits: []
   });
 
-  const queryClient = useQueryClient();
+  useEffect(() => {
+  const loadData = async () => {
+    const { data: authData } = await supabase.auth.getUser();
 
-  const { data: companies = [], isLoading } = useQuery({
-    queryKey: ['companies'],
-    queryFn: () => base44.entities.Company.list(),
-  });
+    if (!authData?.user) return;
 
-  const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Company.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries(['companies']);
-      setShowDialog(false);
-      resetForm();
-      toast.success('Company created successfully');
+    setUser(authData.user);
+
+    const { data, error } = await supabase
+      .from('companies')
+      .select('*')
+      .eq('user_id', authData.user.id)
+      .order('created_at', { ascending: false });
+
+    if (!error) {
+      setCompanies(data);
+    }
+  };
+
+  loadData();
+}, []);
+
+  // TODO: Replace with real Supabase query when ready
+  const [companies, setCompanies] = useState([]);
+const [user, setUser] = useState(null);
+    {
+      id: 1,
+      name: "TechCorp SA",
+      industry: "Technology",
+      location: "Cape Town",
+      website: "https://techcorp.co.za",
+      status: "active",
+      activeJobs: 5,
+      totalHires: 12
     },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Company.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries(['companies']);
-      setShowDialog(false);
-      resetForm();
-      toast.success('Company updated successfully');
+    {
+      id: 2,
+      name: "FinanceHub",
+      industry: "Finance",
+      location: "Johannesburg",
+      website: "https://financehub.co.za",
+      status: "active",
+      activeJobs: 3,
+      totalHires: 8
     },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Company.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries(['companies']);
-      toast.success('Company deleted successfully');
-    },
-  });
+  ]);
 
   const resetForm = () => {
     setFormData({
@@ -80,7 +114,6 @@ export default function Companies() {
       logo_url: '',
       description: '',
       culture_description: '',
-      benefits: []
     });
     setEditingCompany(null);
   };
@@ -97,278 +130,232 @@ export default function Companies() {
       logo_url: company.logo_url || '',
       description: company.description || '',
       culture_description: company.culture_description || '',
-      benefits: company.benefits || []
     });
     setShowDialog(true);
   };
 
-  const handleSubmit = () => {
-    if (!formData.name) {
-      toast.error('Company name is required');
-      return;
-    }
+  const handleSubmit = async () => {
+  if (!formData.name) {
+    toast.error("Company name is required");
+    return;
+  }
 
+  try {
     if (editingCompany) {
-      updateMutation.mutate({ id: editingCompany.id, data: formData });
+      // UPDATE
+      const { error } = await supabase
+        .from('companies')
+        .update(formData)
+        .eq('id', editingCompany.id);
+
+      if (error) throw error;
+
+      toast.success("Company updated");
     } else {
-      createMutation.mutate(formData);
+      // INSERT
+      const { error } = await supabase
+        .from('companies')
+        .insert([
+          {
+            ...formData,
+            user_id: user.id
+          }
+        ]);
+
+      if (error) throw error;
+
+      toast.success("Company created");
     }
-  };
 
+    // 🔁 REFRESH LIST
+    const { data } = await supabase
+      .from('companies')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    setCompanies(data);
+
+    setShowDialog(false);
+    resetForm();
+
+  } catch (err) {
+    console.error(err);
+    toast.error("Something went wrong");
+  }
+
+    // TODO: Replace with real Supabase insert/update when backend is ready
+    if (editingCompany) {
+      // Update existing
+
+const handleDelete = async (id) => {
+  if (!confirm("Delete this company?")) return;
+
+  const { error } = await supabase
+    .from('companies')
+    .delete()
+    .eq('id', id);
+
+  if (!error) {
+    setCompanies(companies.filter(c => c.id !== id));
+    toast.success("Company deleted");
+  }
+};
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Sidebar isCollapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
-      
-      <main className={`transition-all duration-300 ${sidebarCollapsed ? 'ml-20' : 'ml-64'}`}>
-        <TopBar 
-          title="Company Profiles" 
-          subtitle="Manage your company profiles and branding"
-        />
-        
-        <div className="p-8">
-          {/* Header Actions */}
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <Input
-                placeholder="Search companies..."
-                className="pl-10 bg-white border-gray-200"
-              />
-            </div>
-            <Dialog open={showDialog} onOpenChange={(open) => {
-              setShowDialog(open);
-              if (!open) resetForm();
-            }}>
-              <DialogTrigger asChild>
-                <Button className="bg-red-600 hover:bg-red-700 text-white gap-2">
-                  <Plus className="w-4 h-4" />
-                  Add Company
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>{editingCompany ? 'Edit Company' : 'Add New Company'}</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Company Name *</Label>
-                      <Input
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        placeholder="e.g. TechCorp SA"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Industry</Label>
-                      <Input
-                        value={formData.industry}
-                        onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
-                        placeholder="e.g. Technology"
-                      />
-                    </div>
-                  </div>
+    <div className="space-y-8">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold">Client Portal</h1>
+          <p className="text-gray-600">Manage your company profiles and branding</p>
+        </div>
+        <Button 
+          onClick={() => setShowDialog(true)}
+          className="bg-red-600 hover:bg-red-700"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Add Company
+        </Button>
+      </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Company Size</Label>
-                      <Select value={formData.size} onValueChange={(value) => setFormData({ ...formData, size: value })}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select size" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="1-10">1-10 employees</SelectItem>
-                          <SelectItem value="11-50">11-50 employees</SelectItem>
-                          <SelectItem value="51-200">51-200 employees</SelectItem>
-                          <SelectItem value="201-500">201-500 employees</SelectItem>
-                          <SelectItem value="501-1000">501-1000 employees</SelectItem>
-                          <SelectItem value="1000+">1000+ employees</SelectItem>
-                        </SelectContent>
-                      </Select>
+      {/* Companies Grid */}
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {companies.map((company) => (
+          <Card key={company.id} className="hover:shadow-lg transition-all">
+            <CardHeader>
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  {company.logo_url ? (
+                    <img src={company.logo_url} alt={company.name} className="w-12 h-12 object-contain rounded-lg" />
+                  ) : (
+                    <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center">
+                      <Building2 className="w-6 h-6 text-gray-400" />
                     </div>
-                    <div className="space-y-2">
-                      <Label>Location</Label>
-                      <Input
-                        value={formData.location}
-                        onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                        placeholder="e.g. Cape Town, SA"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Website</Label>
-                      <Input
-                        value={formData.website}
-                        onChange={(e) => setFormData({ ...formData, website: e.target.value })}
-                        placeholder="https://company.com"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>LinkedIn URL</Label>
-                      <Input
-                        value={formData.linkedin_url}
-                        onChange={(e) => setFormData({ ...formData, linkedin_url: e.target.value })}
-                        placeholder="https://linkedin.com/company/..."
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Logo URL</Label>
-                    <Input
-                      value={formData.logo_url}
-                      onChange={(e) => setFormData({ ...formData, logo_url: e.target.value })}
-                      placeholder="https://..."
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Description</Label>
-                    <Textarea
-                      value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      placeholder="Brief company description..."
-                      rows={3}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Culture & Values</Label>
-                    <Textarea
-                      value={formData.culture_description}
-                      onChange={(e) => setFormData({ ...formData, culture_description: e.target.value })}
-                      placeholder="Describe company culture, values, work environment..."
-                      rows={3}
-                    />
-                  </div>
-
-                  <div className="flex justify-end gap-3 pt-4">
-                    <Button variant="outline" onClick={() => setShowDialog(false)}>
-                      Cancel
-                    </Button>
-                    <Button 
-                      onClick={handleSubmit}
-                      className="bg-red-600 hover:bg-red-700 text-white"
-                      disabled={createMutation.isPending || updateMutation.isPending}
-                    >
-                      {editingCompany ? 'Update' : 'Create'} Company
-                    </Button>
+                  )}
+                  <div>
+                    <CardTitle className="text-lg">{company.name}</CardTitle>
+                    {company.industry && <p className="text-sm text-gray-500">{company.industry}</p>}
                   </div>
                 </div>
-              </DialogContent>
-            </Dialog>
-          </div>
+              </div>
+            </CardHeader>
 
-          {/* Companies Grid */}
-          {isLoading ? (
-            <div className="text-center py-12">Loading companies...</div>
-          ) : companies.length === 0 ? (
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-12 text-center">
-                <Building2 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No companies yet</h3>
-                <p className="text-gray-500 mb-4">Create your first company profile to get started</p>
-                <Button onClick={() => setShowDialog(true)} className="bg-red-600 hover:bg-red-700 text-white">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Company
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {companies.map((company, i) => (
-                <motion.div
-                  key={company.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05 }}
+            <CardContent className="space-y-4">
+              {company.description && (
+                <p className="text-sm text-gray-600 line-clamp-2">{company.description}</p>
+              )}
+
+              <div className="space-y-2 text-sm text-gray-600">
+                {company.location && (
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4" /> {company.location}
+                  </div>
+                )}
+                {company.size && (
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4" /> {company.size} employees
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-2 pt-4 border-t">
+                {company.website && (
+                  <a href={company.website} target="_blank" rel="noopener noreferrer">
+                    <Button variant="outline" size="sm">
+                      <Globe className="w-4 h-4" />
+                    </Button>
+                  </a>
+                )}
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => handleEdit(company)}
                 >
-                  <Card className="border-0 shadow-sm hover:shadow-lg transition-all h-full">
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
-                          {company.logo_url ? (
-                            <img src={company.logo_url} alt={company.name} className="w-12 h-12 object-contain" />
-                          ) : (
-                            <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
-                              <Building2 className="w-6 h-6 text-gray-400" />
-                            </div>
-                          )}
-                          <div>
-                            <CardTitle className="text-lg">{company.name}</CardTitle>
-                            {company.industry && (
-                              <p className="text-sm text-gray-500">{company.industry}</p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {company.description && (
-                        <p className="text-sm text-gray-600 line-clamp-2">{company.description}</p>
-                      )}
+                  <Edit className="w-4 h-4" />
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="text-red-600 hover:bg-red-50"
+                  onClick={() => handleDelete(company.id)}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
 
-                      <div className="space-y-2 text-sm text-gray-600">
-                        {company.location && (
-                          <div className="flex items-center gap-2">
-                            <MapPin className="w-4 h-4" />
-                            {company.location}
-                          </div>
-                        )}
-                        {company.size && (
-                          <div className="flex items-center gap-2">
-                            <Users className="w-4 h-4" />
-                            {company.size} employees
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2 pt-4 border-t">
-                        {company.website && (
-                          <a href={company.website} target="_blank" rel="noopener noreferrer">
-                            <Button variant="outline" size="sm" className="gap-2">
-                              <Globe className="w-4 h-4" />
-                            </Button>
-                          </a>
-                        )}
-                        {company.linkedin_url && (
-                          <a href={company.linkedin_url} target="_blank" rel="noopener noreferrer">
-                            <Button variant="outline" size="sm" className="gap-2">
-                              <ExternalLink className="w-4 h-4" />
-                            </Button>
-                          </a>
-                        )}
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="gap-2 ml-auto"
-                          onClick={() => handleEdit(company)}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="gap-2 text-red-600 hover:bg-red-50"
-                          onClick={() => {
-                            if (confirm('Delete this company?')) {
-                              deleteMutation.mutate(company.id);
-                            }
-                          }}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
+      {/* Add/Edit Dialog */}
+      <Dialog open={showDialog} onOpenChange={(open) => {
+        setShowDialog(open);
+        if (!open) resetForm();
+      }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{editingCompany ? 'Edit Company' : 'Add New Company'}</DialogTitle>
+          </DialogHeader>
+          {/* Form fields - same as your original but simplified */}
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Company Name *</Label>
+                <Input
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="TechCorp SA"
+                />
+              </div>
+              <div>
+                <Label>Industry</Label>
+                <Input
+                  value={formData.industry}
+                  onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
+                  placeholder="Technology"
+                />
+              </div>
             </div>
-          )}
-        </div>
-      </main>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Location</Label>
+                <Input
+                  value={formData.location}
+                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                  placeholder="Cape Town, SA"
+                />
+              </div>
+              <div>
+                <Label>Website</Label>
+                <Input
+                  value={formData.website}
+                  onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                  placeholder="https://company.com"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label>Description</Label>
+              <Textarea
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Brief company description..."
+                rows={3}
+              />
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setShowDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSubmit} className="bg-red-600 hover:bg-red-700">
+                {editingCompany ? 'Update' : 'Create'} Company
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
