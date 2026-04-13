@@ -1,13 +1,17 @@
+// supabase/functions/AI-Sourcing/index.ts
+
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
 Deno.serve(async (req) => {
-  // Handle CORS
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
   }
 
   try {
@@ -15,90 +19,60 @@ Deno.serve(async (req) => {
 
     if (!query) {
       return new Response(
-        JSON.stringify({ error: "Query is required", candidates: [] }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 400,
+        JSON.stringify({ candidates: [] }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400 
         }
       );
     }
 
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
 
-    if (!OPENAI_API_KEY) {
-      throw new Error("Missing OPENAI_API_KEY");
+    const searchTerm = `%${query.toLowerCase().trim()}%`;
+
+    const { data, error } = await supabase
+      .from('candidates')
+      .select('*')
+      .or(`name.ilike.${searchTerm},title.ilike.${searchTerm},location.ilike.${searchTerm}`)
+      .order('match_score', { ascending: false })
+      .limit(20);
+
+    if (error) {
+      console.error("Database error:", error);
+      return new Response(
+        JSON.stringify({ candidates: [], error: error.message }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500 
+        }
+      );
     }
 
-    const prompt = `
-You are an expert recruitment sourcing AI.
+    // Add match score if missing
+    const candidatesWithScore = (data || []).map((c, index) => ({
+      ...c,
+      match_score: c.match_score || Math.max(70, 95 - index * 3)
+    }));
 
-Generate 5 high-quality candidate profiles for:
-"${query}"
-
-Each candidate must include:
-- id (number)
-- name
-- title
-- location
-- skills (array)
-- experience_years (number)
-- match_score (0-100)
-
-Return ONLY JSON:
-{
-  "candidates": [...]
-}
-`;
-
-    const aiResponse = await fetch(
-      "https://api.openai.com/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${OPENAI_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [
-            { role: "system", content: "You are a recruitment AI." },
-            { role: "user", content: prompt },
-          ],
-          temperature: 0.7,
-        }),
+    return new Response(
+      JSON.stringify({ candidates: candidatesWithScore }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200 
       }
     );
 
-    const aiData = await aiResponse.json();
-
-    let candidates = [];
-
-    try {
-      const content = aiData.choices?.[0]?.message?.content || "{}";
-      const parsed = JSON.parse(content);
-      candidates = parsed.candidates || [];
-    } catch (err) {
-      console.error("AI JSON parse error:", err);
-    }
-
+  } catch (err) {
+    console.error("Edge Function error:", err);
     return new Response(
-      JSON.stringify({ candidates }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      }
-    );
-  } catch (error) {
-    console.error("Edge Function Error:", error);
-
-    return new Response(
-      JSON.stringify({
-        error: error.message,
-        candidates: [],
-      }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 500,
+      JSON.stringify({ candidates: [], error: err.message }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500 
       }
     );
   }

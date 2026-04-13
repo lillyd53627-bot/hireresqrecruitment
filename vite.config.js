@@ -4,16 +4,15 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
-
-  server: {
-    host: true,           // Allow access from network
-    port: 5173,           // Try to use 5173 first
-    strictPort: false,    // Allow fallback to any available port if 5173 is busy
-  },
-
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+  },
+  server: {
+    host: true,           // Allow access from network
+    port: 5178,           // You can change this if needed
+    strictPort: false,    // Use any available port if 5178 is busy
+    https: false,         // Keep false for now to avoid frame issues
   },
 });

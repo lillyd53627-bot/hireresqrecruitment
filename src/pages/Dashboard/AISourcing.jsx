@@ -30,31 +30,23 @@ export default function AISourcing() {
         body: JSON.stringify({ query: searchQuery })
       });
 
-      console.log("📡 AI-Sourcing fetch status:", response.status);
-
-      if (!response.ok) {
-        const errorText = await response.text().catch(() => 'No error body');
-        console.error("❌ Fetch failed:", response.status, errorText);
-        toast.error(`Server error: ${response.status}`);
-        return;
-      }
+      console.log("📡 Status:", response.status);
 
       const data = await response.json();
-      console.log("✅ FULL Response received from AI-Sourcing:", data);
+      console.log("✅ RAW RESPONSE:", JSON.stringify(data, null, 2));
 
-      // Handle different possible response formats safely
-      const candidatesList = data?.candidates || data || [];
+      const candidatesList = Array.isArray(data) ? data : (data?.candidates || []);
 
       setCandidates(candidatesList);
 
       if (candidatesList.length === 0) {
-        toast.info("No candidates found for this search term. Try different keywords.");
+        toast.info("No candidates found for this search.");
       } else {
         toast.success(`Found ${candidatesList.length} candidates`);
       }
     } catch (err) {
-      console.error("🚨 Catch error:", err);
-      toast.error("Failed to connect to AI Sourcing. Check console for details.");
+      console.error("🚨 Error:", err);
+      toast.error("Failed to reach AI Sourcing.");
     } finally {
       setLoading(false);
     }
@@ -62,9 +54,9 @@ export default function AISourcing() {
 
   return (
     <div className="p-8 max-w-5xl mx-auto">
-      <Card className="border-0 shadow-sm">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-2xl">AI Talent Sourcing</CardTitle>
+          <CardTitle>AI Talent Sourcing</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="flex gap-3">
@@ -73,13 +65,8 @@ export default function AISourcing() {
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="sales manager johannesburg"
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              className="flex-1"
             />
-            <Button 
-              onClick={handleSearch} 
-              disabled={loading}
-              className="bg-red-600 hover:bg-red-700 px-8"
-            >
+            <Button onClick={handleSearch} disabled={loading}>
               {loading ? 'Searching...' : 'Search'}
             </Button>
           </div>
