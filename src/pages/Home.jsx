@@ -165,20 +165,23 @@ export default function Home() {
               </p>
 
               <div className="flex flex-wrap gap-4">
-             <Link to="/register">
-                  <Button size="lg" className="bg-red-600 hover:bg-red-700 text-white px-8 py-6 text-lg rounded-2xl flex items-center gap-3">
-                    Get Started Free
-                    <ArrowRight className="w-5 h-5" />
-                  </Button>
-                </Link>
 
-                <Button 
+<Link to="/register">
+  <Button size="lg" className="bg-red-600 hover:bg-red-700 text-white px-8 py-6 text-lg rounded-2xl flex items-center gap-3">
+    Get Started
+    <ArrowRight className="w-5 h-5" />
+  </Button>
+</Link>
+
+<Button 
   variant="outline" 
   size="lg" 
   className="border-white/30 hover:bg-white/10 text-black px-8 py-6 text-lg rounded-2xl flex items-center gap-3"
-  onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
+  asChild
 >
-  <Play className="w-5 h-5" /> Watch Demo
+  <Link to="/demo">
+    <Play className="w-5 h-5" /> Watch Demo
+  </Link>
 </Button>
               </div>
             </div>
