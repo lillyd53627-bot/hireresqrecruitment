@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Plus, Search } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
+import { Search } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -15,37 +15,36 @@ export default function Candidates() {
   const [candidates, setCandidates] = useState([]);
   const [filteredCandidates, setFilteredCandidates] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState('all');
-  const [loading, setLoading] = useState(true);
-  const [showAddModal, setShowAddModal] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState(null);
 
-  const [newCandidate, setNewCandidate] = useState({
-    name: '',
-    title: '',
-    location: '',
-    email: '',
-    phone: ''
-  });
+  // Filters
+  const [province, setProvince] = useState('');
+  const [city, setCity] = useState('');
+  const [education, setEducation] = useState('');
+  const [availability, setAvailability] = useState('');
+  const [ageRange, setAgeRange] = useState([18, 64]);
+  const [salaryRange, setSalaryRange] = useState([0, 3000000]);
 
-  // Fetch real candidates from Supabase
+  const locations = {
+    Gauteng: ["Johannesburg", "Pretoria", "Midrand"],
+    "Western Cape": ["Cape Town", "Stellenbosch"],
+    "KwaZulu-Natal": ["Durban"],
+    "Eastern Cape": ["Port Elizabeth"],
+    "Free State / Other": ["Bloemfontein"]
+  };
+
+  // Fetch
   const fetchCandidates = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('candidates')
-        .select('*')
-        .order('created_at', { ascending: false });
+    const { data, error } = await supabase
+      .from('candidates')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-      if (error) throw error;
-
+    if (error) {
+      toast.error("Failed to load candidates");
+    } else {
       setCandidates(data || []);
       setFilteredCandidates(data || []);
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to load candidates");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -53,212 +52,164 @@ export default function Candidates() {
     fetchCandidates();
   }, []);
 
-  // Filter by search and tab
+  // Filtering
   useEffect(() => {
     let result = candidates;
 
-    if (searchQuery.trim()) {
+    if (searchQuery) {
       const q = searchQuery.toLowerCase();
       result = result.filter(c =>
         (c.name || '').toLowerCase().includes(q) ||
-        (c.title || '').toLowerCase().includes(q) ||
-        (c.location || '').toLowerCase().includes(q)
+        (c.title || '').toLowerCase().includes(q)
       );
     }
 
-    if (activeTab !== 'all') {
-      result = result.filter(c => (c.status || 'new') === activeTab);
-    }
+    if (province) result = result.filter(c => c.location?.includes(province));
+    if (city) result = result.filter(c => c.location?.includes(city));
+    if (education) result = result.filter(c => c.education === education);
+    if (availability) result = result.filter(c => c.availability === availability);
+
+    result = result.filter(c =>
+      !c.age || (c.age >= ageRange[0] && c.age <= ageRange[1])
+    );
+
+    result = result.filter(c =>
+      !c.salary || (c.salary >= salaryRange[0] && c.salary <= salaryRange[1])
+    );
 
     setFilteredCandidates(result);
-  }, [searchQuery, activeTab, candidates]);
-
-  // Add new candidate
-  const handleAddCandidate = async () => {
-    if (!newCandidate.name || !newCandidate.title) {
-      toast.error("Name and title are required");
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('candidates')
-        .insert([{
-          name: newCandidate.name,
-          title: newCandidate.title,
-          location: newCandidate.location,
-          email: newCandidate.email,
-          phone: newCandidate.phone,
-          status: 'new'
-        }]);
-
-      if (error) throw error;
-
-      toast.success("Candidate added successfully");
-      setShowAddModal(false);
-      setNewCandidate({ name: '', title: '', location: '', email: '', phone: '' });
-      fetchCandidates();
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to add candidate");
-    }
-  };
-
-  const statusTabs = [
-    { value: 'all', label: 'All', count: candidates.length },
-    { value: 'new', label: 'New', count: candidates.filter(c => c.status === 'new').length },
-    { value: 'screening', label: 'Screening', count: candidates.filter(c => c.status === 'screening').length },
-    { value: 'shortlisted', label: 'Shortlisted', count: candidates.filter(c => c.status === 'shortlisted').length },
-    { value: 'interview', label: 'Interview', count: candidates.filter(c => c.status === 'interview').length },
-    { value: 'offered', label: 'Offered', count: candidates.filter(c => c.status === 'offered').length },
-    { value: 'hired', label: 'Hired', count: candidates.filter(c => c.status === 'hired').length },
-  ];
-
-  const getFilteredByStatus = (status) => {
-    if (status === 'all') return filteredCandidates;
-    return filteredCandidates.filter(c => (c.status || 'new') === status);
-  };
+  }, [searchQuery, province, city, education, availability, ageRange, salaryRange, candidates]);
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold">Candidates</h1>
-          <p className="text-gray-600">Manage your talent pipeline</p>
-        </div>
+    <div className="p-8 max-w-7xl mx-auto space-y-6">
 
-        <Button onClick={() => setShowAddModal(true)} className="bg-red-600 hover:bg-red-700">
-          <Plus className="w-5 h-5 mr-2" />
-          Add Candidate
-        </Button>
+      {/* HEADER */}
+      <div>
+        <h1 className="text-3xl font-bold">Candidates</h1>
+        <p className="text-gray-600">AI-powered candidate search</p>
       </div>
 
-      {/* Search */}
-      <div className="flex gap-4 mb-6">
-        <div className="flex-1 relative">
-          <Search className="absolute left-4 top-3.5 w-5 h-5 text-gray-400" />
-          <Input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by name, title or location..."
-            className="pl-11"
-          />
-        </div>
+      {/* SEARCH */}
+      <div className="relative">
+        <Search className="absolute left-4 top-3 text-gray-400" />
+        <Input
+          className="pl-10"
+          placeholder="Search candidates..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
       </div>
 
-      {/* Pipeline Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-7 w-full mb-6">
-          {statusTabs.map(tab => (
-            <TabsTrigger key={tab.value} value={tab.value}>
-              {tab.label} <Badge variant="secondary" className="ml-2">{tab.count}</Badge>
-            </TabsTrigger>
-          ))}
-        </TabsList>
+      {/* FILTERS */}
+      <Card>
+        <CardContent className="grid md:grid-cols-3 gap-6 p-6">
 
-        {statusTabs.map(tab => (
-          <TabsContent key={tab.value} value={tab.value}>
-            <div className="grid gap-4">
-              {getFilteredByStatus(tab.value).length > 0 ? (
-                getFilteredByStatus(tab.value).map(c => (
-                  <Card key={c.id} className="hover:shadow-md transition-all">
-                    <CardContent className="p-6 flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center text-red-600 font-bold">
-                          {c.name?.split(' ').map(n => n[0]).join('') || '??'}
-                        </div>
-                        <div>
-                          <h3 className="font-semibold">{c.name}</h3>
-                          <p className="text-gray-600">{c.title}</p>
-                          <p className="text-sm text-gray-500">{c.location}</p>
-                        </div>
-                      </div>
+          {/* PROVINCE */}
+          <Select onValueChange={(v) => { setProvince(v === "ALL" ? "" : v); setCity(""); }}>
+            <SelectTrigger><SelectValue placeholder="All Provinces" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Provinces</SelectItem>
+              {Object.keys(locations).map(p => (
+                <SelectItem key={p} value={p}>{p}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-                      <div className="flex items-center gap-6">
-                        <div className="text-right">
-                          <div className="font-bold text-green-600">{c.match_score || 75}%</div>
-                          <div className="text-xs text-gray-500">Match</div>
-                        </div>
-                        <Badge variant="outline" className="capitalize">{c.status || 'new'}</Badge>
-                        
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => setSelectedCandidate(c)}
-                        >
-                          View Details
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
-              ) : (
-                <div className="text-center py-20 text-gray-500">
-                  No candidates in this stage yet.
-                </div>
-              )}
-            </div>
-          </TabsContent>
+          {/* CITY */}
+          <Select onValueChange={(v) => setCity(v === "ALL" ? "" : v)}>
+            <SelectTrigger><SelectValue placeholder="All Cities" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Cities</SelectItem>
+              {(locations[province] || []).map(c => (
+                <SelectItem key={c} value={c}>{c}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* EDUCATION */}
+          <Select onValueChange={setEducation}>
+            <SelectTrigger><SelectValue placeholder="Education" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Bachelors">Bachelors</SelectItem>
+              <SelectItem value="Masters">Masters</SelectItem>
+              <SelectItem value="Diploma">Diploma</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* AVAILABILITY */}
+          <Select onValueChange={setAvailability}>
+            <SelectTrigger><SelectValue placeholder="Availability" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Immediate">Immediate</SelectItem>
+              <SelectItem value="1 Month">1 Month</SelectItem>
+              <SelectItem value="2 Months">2 Months</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* AGE SLIDER FIX */}
+          <div>
+            <Label className="flex justify-between">
+              Age Range
+              <span className="text-red-600 font-medium">
+                {ageRange[0]} - {ageRange[1]}
+              </span>
+            </Label>
+            <Slider
+              min={18}
+              max={64}
+              step={1}
+              value={ageRange}
+              onValueChange={setAgeRange}
+            />
+          </div>
+
+          {/* SALARY SLIDER FIX */}
+          <div>
+            <Label className="flex justify-between">
+              Salary (ZAR)
+              <span className="text-red-600 font-medium">
+                R{salaryRange[0].toLocaleString()} - R{salaryRange[1].toLocaleString()}
+              </span>
+            </Label>
+            <Slider
+              min={0}
+              max={3000000}
+              step={50000}
+              value={salaryRange}
+              onValueChange={setSalaryRange}
+            />
+          </div>
+
+        </CardContent>
+      </Card>
+
+      {/* RESULTS */}
+      <div className="grid gap-4">
+        {filteredCandidates.map(c => (
+          <Card key={c.id}>
+            <CardContent className="flex justify-between items-center p-6">
+              <div>
+                <h3 className="font-bold">{c.name}</h3>
+                <p className="text-gray-600">{c.title}</p>
+                <p className="text-sm text-gray-500">{c.location}</p>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <Badge>{c.status || 'new'}</Badge>
+
+                <Button
+                  variant="outline"
+                  onClick={() => setSelectedCandidate(c)}
+                >
+                  View Details
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         ))}
-      </Tabs>
+      </div>
 
-      {/* Add Candidate Modal */}
-      <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add New Candidate</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <Label>Full Name *</Label>
-              <Input 
-                value={newCandidate.name}
-                onChange={(e) => setNewCandidate({...newCandidate, name: e.target.value})}
-                placeholder="John Doe"
-              />
-            </div>
-            <div>
-              <Label>Job Title *</Label>
-              <Input 
-                value={newCandidate.title}
-                onChange={(e) => setNewCandidate({...newCandidate, title: e.target.value})}
-                placeholder="Senior Software Engineer"
-              />
-            </div>
-            <div>
-              <Label>Location</Label>
-              <Input 
-                value={newCandidate.location}
-                onChange={(e) => setNewCandidate({...newCandidate, location: e.target.value})}
-                placeholder="Cape Town, South Africa"
-              />
-            </div>
-            <div>
-              <Label>Email</Label>
-              <Input 
-                type="email"
-                value={newCandidate.email}
-                onChange={(e) => setNewCandidate({...newCandidate, email: e.target.value})}
-                placeholder="john@example.com"
-              />
-            </div>
-            <div>
-              <Label>Phone</Label>
-              <Input 
-                value={newCandidate.phone}
-                onChange={(e) => setNewCandidate({...newCandidate, phone: e.target.value})}
-                placeholder="+27 82 123 4567"
-              />
-            </div>
-          </div>
-          <div className="flex justify-end gap-3">
-            <Button variant="outline" onClick={() => setShowAddModal(false)}>Cancel</Button>
-            <Button onClick={handleAddCandidate} className="bg-red-600 hover:bg-red-700">Add Candidate</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Full Candidate Details Dialog */}
+      {/* DETAILS MODAL */}
       {selectedCandidate && (
         <CandidateDetailsDialog
           candidate={selectedCandidate}
