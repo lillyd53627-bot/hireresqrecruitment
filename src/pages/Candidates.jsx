@@ -1,315 +1,310 @@
-// src/components/candidates/CandidateDetailsDialog.jsx
-import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Mail, Phone, MapPin, Star, Briefcase, Calendar,
-  ExternalLink, X, Save 
-} from 'lucide-react';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
 import { supabase } from '@/lib/supabase';
-import { toast } from 'sonner';
+import CandidateDetailsDialog from '@/components/candidates/CandidateDetailsDialog';
 
-const statusOptions = [
-  { value: 'new', label: 'New' },
-  { value: 'screening', label: 'Screening' },
-  { value: 'shortlisted', label: 'Shortlisted' },
-  { value: 'interview', label: 'Interview' },
-  { value: 'offered', label: 'Offered' },
-  { value: 'hired', label: 'Hired' },
-  { value: 'rejected', label: 'Rejected' },
-];
+export default function Candidates() {
+  const [candidates, setCandidates] = useState([]);
+  const [filtered, setFiltered] = useState([]);
+  const [search, setSearch] = useState('');
+  const [selectedCandidate, setSelectedCandidate] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [previewCv, setPreviewCv] = useState(null);
 
-export default function CandidateDetailsDialog({ 
-  candidate, 
-  onClose, 
-  onStatusChange 
-}) {
-  const [notes, setNotes] = useState(candidate?.notes || '');
-  const [newNote, setNewNote] = useState('');
+  const fileInputRef = useRef(null);
 
-  const handleAddNote = async () => {
-    if (!newNote.trim()) return;
+  // FILTER STATES (unchanged)
+  const [province, setProvince] = useState('ALL');
+  const [city, setCity] = useState('ALL');
+  const [education, setEducation] = useState('ALL');
+  const [gender, setGender] = useState([]);
+  const [ethnicity, setEthnicity] = useState([]);
+  const [age, setAge] = useState([18, 64]);
+  const [salary, setSalary] = useState([0, 3000000]);
 
-    const timestamp = new Date().toLocaleString();
-    const updatedNotes = notes 
-      ? `${notes}\n\n[${timestamp}]\n${newNote}`
-      : `[${timestamp}]\n${newNote}`;
+  const locations = {
+    'Eastern Cape': ['ALL', 'Gqeberha (Port Elizabeth)', 'East London (eMonti)', 'Makhanda (Grahamstown)', 'Mthatha (Umtata)', 'Queenstown (Komani)', 'Graaff-Reinet', 'Port Alfred', 'Jeffreys Bay', 'Kariega (Uitenhage)', 'Butterworth (Gcuwa)', 'Bhisho'],
+    'Free State': ['ALL', 'Bloemfontein', 'Botshabelo', 'Welkom', 'Virginia', 'Odendaalsrus', 'Bethlehem', 'Kroonstad', 'Sasolburg', 'Parys', 'Phuthaditjhaba', 'Harrismith'],
+    'Gauteng': ['ALL', 'Johannesburg', 'Pretoria (Tshwane)', 'Soweto', 'Germiston', 'Boksburg', 'Benoni', 'Brakpan', 'Randburg', 'Roodepoort', 'Vereeniging', 'Vanderbijlpark', 'Krugersdorp', 'Springs', 'Carletonville'],
+    'KwaZulu-Natal': ['ALL', 'Durban', 'Pietermaritzburg', 'Newcastle', 'Richards Bay', 'Ladysmith', 'Port Shepstone', 'Ballito', 'Umhlanga', 'Pinetown', 'Vryheid'],
+    'Limpopo': ['ALL', 'Polokwane', 'Tzaneen', 'Lephalale (Ellisras)', 'Mokopane (Potgietersrus)', 'Musina (Messina)', 'Thohoyandou', 'Phalaborwa', 'Bela-Bela (Warmbaths)'],
+    'Mpumalanga': ['ALL', 'Mbombela (Nelspruit)', 'Witbank (eMalahleni)', 'Middelburg', 'Secunda', 'Ermelo', 'Barberton', 'Lydenburg', 'Hazyview', 'White River'],
+    'North West': ['ALL', 'Mahikeng', 'Rustenburg', 'Potchefstroom', 'Klerksdorp', 'Brits', 'Lichtenburg', 'Hartbeespoort', 'Mmabatho'],
+    'Northern Cape': ['ALL', 'Kimberley', 'Upington', 'Springbok', 'Kathu', 'Kuruman', 'De Aar', 'Calvinia', 'Prieska'],
+    'Western Cape': ['ALL', 'Cape Town', 'Stellenbosch', 'Paarl', 'George', 'Worcester', 'Mossel Bay', 'Knysna', 'Hermanus', 'Somerset West', 'Bellville', 'Strand', 'Saldanha']
+  };
+
+  // FETCH (unchanged)
+  useEffect(() => {
+    const fetchData = async () => {
+      const { data, error } = await supabase.from('candidates').select('*');
+      if (error) console.error("Supabase error:", error);
+      console.log(`✅ Fetched ${data?.length || 0} candidates`);
+      if (data && data.length > 0) {
+        console.log("Sample title:", data[0].title);
+      }
+      setCandidates(data || []);
+      setFiltered(data || []);
+    };
+    fetchData();
+  }, []);
+
+  // SEARCH LOGIC (unchanged)
+  useEffect(() => {
+    if (!search.trim()) {
+      setFiltered([...candidates]);
+      return;
+    }
+    const term = search.toLowerCase().trim();
+    console.log(`🔍 Searching for "${term}"`);
+    const result = candidates.filter(c => {
+      const title = (c.title || '').toLowerCase();
+      const name = (c.name || '').toLowerCase();
+      const location = (c.location || '').toLowerCase();
+      const cityField = (c.city || '').toLowerCase();
+      return title.includes(term) ||
+             name.includes(term) ||
+             location.includes(term) ||
+             cityField.includes(term);
+    });
+    console.log(`Search returned ${result.length} results`);
+    setFiltered(result);
+  }, [search, candidates]);
+
+  // CV UPLOAD - Your logic
+  const handleCVUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
     try {
-      const { error } = await supabase
-        .from('candidates')
-        .update({ notes: updatedNotes })
-        .eq('id', candidate.id);
+      setUploading(true);
 
-      if (error) throw error;
+      const text = await file.text();
 
-      setNotes(updatedNotes);
-      setNewNote('');
-      toast.success('Note saved successfully');
-    } catch (error) {
-      console.error(error);
-      toast.error('Failed to save note');
+      const response = await fetch(
+        "https://tlzipklqaxiupbhggbnm.functions.supabase.co/parse-cv",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text })
+        }
+      );
+
+      const parsed = await response.json();
+
+      if (!parsed || parsed.error) {
+        alert("Failed to parse CV");
+        return;
+      }
+
+      const { error } = await supabase.from('candidates').insert([{
+        name: parsed.name || "Unknown",
+        title: parsed.title || "",
+        location: parsed.location || "",
+        city: parsed.city || "",
+        province: parsed.province || "",
+        skills: parsed.skills?.join(', ') || "",
+        education: parsed.education || "",
+        gender: parsed.gender || "",
+        ethnicity: parsed.ethnicity || "",
+        age: parsed.age || null,
+        salary: parsed.salary || null,
+        status: 'new'
+      }]);
+
+      if (error) {
+        console.error(error);
+        alert("Failed to save candidate");
+        return;
+      }
+
+      alert("✅ CV parsed & candidate added");
+      window.location.reload();
+
+    } catch (err) {
+      console.error(err);
+      alert("Error uploading CV");
+    } finally {
+      setUploading(false);
     }
   };
 
-  const handleStatusChangeLocal = async (newStatus) => {
-    try {
-      // Fixed: removed duplicate 'data, error' declaration
-      const { error } = await supabase
-        .from('candidates')
-        .update({ status: newStatus })
-        .eq('id', candidate.id);
-
-      if (error) throw error;
-
-      toast.success('Status updated');
-      if (onStatusChange) onStatusChange(candidate.id, newStatus);
-    } catch (error) {
-      toast.error('Failed to update status');
+  // CV PREVIEW
+  const handleCvPreview = (candidate) => {
+    if (candidate.cv_file_path) {
+      setPreviewCv(candidate.cv_file_path);
+    } else {
+      alert('No CV available for this candidate.');
     }
+  };
+
+  const clearFilters = () => {
+    setSearch('');
+    setProvince('ALL');
+    setCity('ALL');
+    setEducation('ALL');
+    setGender([]);
+    setEthnicity([]);
+    setAge([18, 64]);
+    setSalary([0, 3000000]);
+  };
+
+  const saveSearch = () => {
+    const saved = JSON.parse(localStorage.getItem('savedSearches') || '[]');
+    saved.push({ search, province, city, education });
+    localStorage.setItem('savedSearches', JSON.stringify(saved));
+    alert("Search saved!");
   };
 
   return (
-    <Dialog open={!!candidate} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
-                <span className="text-2xl font-bold text-gray-600">
-                  {candidate?.name?.split(' ').map(n => n[0]).join('') || '?'}
-                </span>
-              </div>
-              <div>
-                <DialogTitle className="text-2xl">{candidate?.name}</DialogTitle>
-                <p className="text-gray-500">{candidate?.title}</p>
-              </div>
+    <div className="p-8 max-w-7xl mx-auto space-y-6 pl-72">
+      <div className="flex gap-3">
+        <Input
+          placeholder="Search by title or name (e.g. sales manager, john)"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="flex-1"
+        />
+        <Button className="bg-blue-600 hover:bg-blue-700">Search</Button>
+        <Button onClick={saveSearch} className="bg-red-600 hover:bg-red-700">Save Search</Button>
+        <Button onClick={clearFilters} variant="outline">Clear Filters</Button>
+
+        {/* CV Upload Button - Fixed with ref */}
+        <Button 
+          disabled={uploading} 
+          className="bg-green-600 hover:bg-green-700"
+          onClick={() => fileInputRef.current?.click()}
+        >
+          {uploading ? 'Uploading...' : 'Upload CV'}
+        </Button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,.doc,.docx"
+          onChange={handleCVUpload}
+          className="hidden"
+        />
+      </div>
+
+      {/* Rest of your file remains unchanged - filters, gender buttons, sliders, results, etc. */}
+      <div className="grid md:grid-cols-4 gap-4">
+        <Select value={province} onValueChange={setProvince}>
+          <SelectTrigger><SelectValue placeholder="Province" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">ALL</SelectItem>
+            {Object.keys(locations).map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={city} onValueChange={setCity}>
+          <SelectTrigger><SelectValue placeholder="City" /></SelectTrigger>
+          <SelectContent>
+            {(locations[province] || ['ALL']).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={education} onValueChange={setEducation}>
+          <SelectTrigger><SelectValue placeholder="Education" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">ALL</SelectItem>
+            <SelectItem value="Matric">Matric</SelectItem>
+            <SelectItem value="Diploma">Diploma</SelectItem>
+            <SelectItem value="Bachelors">Bachelors</SelectItem>
+            <SelectItem value="Masters">Masters</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex gap-6 flex-wrap">
+        {['Male', 'Female'].map(g => (
+          <Button key={g} variant={gender.includes(g) ? 'default' : 'outline'}
+            onClick={() => setGender(prev => prev.includes(g) ? prev.filter(x => x !== g) : [...prev, g])}>
+            {g}
+          </Button>
+        ))}
+        {['Black','White','Coloured','Indian','Chinese','Other'].map(e => (
+          <Button key={e} variant={ethnicity.includes(e) ? 'default' : 'outline'}
+            onClick={() => setEthnicity(prev => prev.includes(e) ? prev.filter(x => x !== e) : [...prev, e])}>
+            {e}
+          </Button>
+        ))}
+      </div>
+
+      <div className="space-y-6">
+        <div>
+          <p className="text-sm font-medium">Age: {age[0]} - {age[1]}</p>
+          <Slider value={age} min={18} max={64} step={1} onValueChange={setAge} />
+        </div>
+        <div>
+          <p className="text-sm font-medium">Salary: R{salary[0].toLocaleString()} - R{salary[1].toLocaleString()}</p>
+          <Slider value={salary} min={0} max={3000000} step={50000} onValueChange={setSalary} />
+        </div>
+      </div>
+
+      {/* RESULTS */}
+      <div className="grid gap-4">
+        {Array.isArray(filtered) && filtered.length > 0 ? (
+          filtered.map((c) => (
+            <Card key={c.id}>
+              <CardContent className="flex justify-between p-6">
+                <div>
+                  <h3 className="font-bold">{c.name}</h3>
+                  <p className="text-lg">{c.title}</p>
+                  <p className="text-sm text-gray-500">
+                    {c.city || c.location || 'No location'}, {c.province || ''}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Badge>{c.status || 'new'}</Badge>
+                  <Button variant="outline" onClick={() => setSelectedCandidate(c)}>
+                    View Details
+                  </Button>
+                  {c.cv_file_path && (
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setPreviewCv(c.cv_file_path)}
+                    >
+                      Preview CV
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        ) : (
+          <p className="text-center text-gray-500 py-12">
+            No matches found.<br />
+            Try searching for <strong>"sales"</strong> or <strong>"john"</strong>
+          </p>
+        )}
+      </div>
+
+      {/* CV Preview Modal */}
+      {previewCv && (
+        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
+          <div className="bg-white w-full max-w-5xl h-[95vh] flex flex-col rounded-xl overflow-hidden">
+            <div className="p-4 border-b flex justify-between items-center bg-gray-50">
+              <h2 className="font-semibold">CV Preview</h2>
+              <Button variant="outline" onClick={() => setPreviewCv(null)}>Close</Button>
             </div>
-            <Button variant="ghost" size="icon" onClick={onClose}>
-              <X className="w-5 h-5" />
-            </Button>
+            <iframe
+              src={previewCv}
+              className="flex-1 w-full border-0"
+              title="CV Preview"
+            />
           </div>
-        </DialogHeader>
+        </div>
+      )}
 
-        <Tabs defaultValue="overview" className="mt-6">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="notes">Notes & Ratings</TabsTrigger>
-            <TabsTrigger value="activity">Activity</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview" className="space-y-6 mt-6">
-            {/* Status */}
-            <div className="flex items-center gap-4">
-              <div className="flex-1">
-                <label className="text-sm font-medium mb-2 block">Current Status</label>
-                <Select 
-                  value={candidate?.status || 'new'} 
-                  onValueChange={handleStatusChangeLocal}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {statusOptions.map(option => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {candidate?.match_score && (
-                <div className="text-center">
-                  <label className="text-sm font-medium mb-2 block">Match Score</label>
-                  <div className="flex items-center gap-1 text-2xl font-bold text-red-600">
-                    <Star className="w-6 h-6" />
-                    {candidate.match_score}%
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Contact & Professional Info */}
-            <div className="grid md:grid-cols-2 gap-6 p-6 bg-gray-50 rounded-xl">
-              <div>
-                <h3 className="font-semibold mb-4">Contact Information</h3>
-                <div className="space-y-3 text-sm">
-                  {candidate?.email && (
-                    <div className="flex items-center gap-3">
-                      <Mail className="w-4 h-4 text-gray-400" />
-                      <a href={`mailto:${candidate.email}`} className="text-blue-600 hover:underline">
-                        {candidate.email}
-                      </a>
-                    </div>
-                  )}
-                  {candidate?.phone && (
-                    <div className="flex items-center gap-3">
-                      <Phone className="w-4 h-4 text-gray-400" />
-                      <a href={`tel:${candidate.phone}`} className="hover:text-blue-600">
-                        {candidate.phone}
-                      </a>
-                    </div>
-                  )}
-                  {candidate?.location && (
-                    <div className="flex items-center gap-3">
-                      <MapPin className="w-4 h-4 text-gray-400" />
-                      {candidate.location}
-                    </div>
-                  )}
-                  {candidate?.linkedin_url && (
-                    <div className="flex items-center gap-3">
-                      <ExternalLink className="w-4 h-4 text-gray-400" />
-                      <a href={candidate.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                        LinkedIn Profile
-                      </a>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <h3 className="font-semibold mb-4">Professional Details</h3>
-                <div className="space-y-3 text-sm">
-                  {candidate?.company && (
-                    <div className="flex items-center gap-3">
-                      <Briefcase className="w-4 h-4 text-gray-400" />
-                      {candidate.company}
-                    </div>
-                  )}
-                  {candidate?.experience_years && (
-                    <div className="flex items-center gap-3">
-                      <Calendar className="w-4 h-4 text-gray-400" />
-                      {candidate.experience_years} years experience
-                    </div>
-                  )}
-                  {candidate?.salary_expectation && (
-                    <div><span className="text-gray-500">Salary Expectation:</span> {candidate.salary_expectation}</div>
-                  )}
-                  {candidate?.availability && (
-                    <div><span className="text-gray-500">Availability:</span> {candidate.availability.replace('_', ' ')}</div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Skills */}
-            {candidate?.skills && candidate.skills.length > 0 && (
-              <div>
-                <h3 className="font-semibold mb-3">Skills</h3>
-                <div className="flex flex-wrap gap-2">
-                  {candidate.skills.map((skill, i) => (
-                    <Badge key={i} variant="secondary" className="bg-red-50 text-red-700">
-                      {skill}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* AI Insights */}
-            {candidate?.ai_insights && (
-              <div className="p-5 bg-purple-50 rounded-xl border border-purple-100">
-                <h3 className="font-semibold mb-3 text-purple-900">AI Insights</h3>
-                {candidate.ai_insights.summary && (
-                  <p className="text-purple-800 mb-4">{candidate.ai_insights.summary}</p>
-                )}
-                {candidate.ai_insights.personality_traits && candidate.ai_insights.personality_traits.length > 0 && (
-                  <div className="mb-3">
-                    <span className="text-sm font-medium text-purple-900">Personality Traits:</span>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {candidate.ai_insights.personality_traits.map((trait, i) => (
-                        <Badge key={i} className="bg-white text-purple-700 border-purple-200">
-                          {trait}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* CV Link */}
-            {candidate?.cv_url && (
-              <Button variant="outline" className="w-full" asChild>
-                <a href={candidate.cv_url} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  View CV / Resume
-                </a>
-              </Button>
-            )}
-          </TabsContent>
-
-          <TabsContent value="notes" className="mt-6 space-y-6">
-            <div>
-              <h3 className="font-semibold mb-3">Add New Note</h3>
-              <Textarea
-                placeholder="Add detailed notes about the candidate..."
-                value={newNote}
-                onChange={(e) => setNewNote(e.target.value)}
-                className="min-h-[120px]"
-              />
-              <Button 
-                onClick={handleAddNote}
-                disabled={!newNote.trim()}
-                className="mt-3 bg-red-600 hover:bg-red-700"
-              >
-                <Save className="w-4 h-4 mr-2" />
-                Save Note
-              </Button>
-            </div>
-
-            {notes && (
-              <div className="p-5 bg-gray-50 rounded-xl border">
-                <h3 className="font-semibold mb-3">Previous Notes</h3>
-                <div className="whitespace-pre-wrap text-sm text-gray-700 leading-relaxed">
-                  {notes}
-                </div>
-              </div>
-            )}
-
-            {candidate?.cultural_fit_score && (
-              <div className="p-5 bg-purple-50 rounded-xl">
-                <h3 className="font-semibold mb-2">Cultural Fit Score</h3>
-                <div className="text-4xl font-bold text-purple-600">
-                  {candidate.cultural_fit_score}%
-                </div>
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="activity" className="mt-6">
-            <div className="space-y-6">
-              <div className="p-5 border-l-4 border-gray-300 bg-gray-50 rounded-r-xl">
-                <div className="font-medium">Candidate Added</div>
-                <div className="text-sm text-gray-500 mt-1">
-                  {candidate?.created_at ? new Date(candidate.created_at).toLocaleString() : 'Unknown'}
-                </div>
-              </div>
-
-              {candidate?.updated_at && candidate.updated_at !== candidate.created_at && (
-                <div className="p-5 border-l-4 border-blue-300 bg-blue-50 rounded-r-xl">
-                  <div className="font-medium">Last Updated</div>
-                  <div className="text-sm text-gray-500 mt-1">
-                    {new Date(candidate.updated_at).toLocaleString()}
-                  </div>
-                </div>
-              )}
-            </div>
-          </TabsContent>
-        </Tabs>
-      </DialogContent>
-    </Dialog>
+      {selectedCandidate && (
+        <CandidateDetailsDialog
+          candidate={selectedCandidate}
+          onClose={() => setSelectedCandidate(null)}
+        />
+      )}
+    </div>
   );
 }
