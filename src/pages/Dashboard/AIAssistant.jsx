@@ -28,9 +28,7 @@ export default function AIAssistant() {
     setCandidates(sorted);
   };
 
-  // ============================
-  // BULK CV UPLOAD (FIXED)
-  // ============================
+  // Bulk CV Upload
   const handleCVUpload = async (files) => {
     if (!files || files.length === 0) return;
 
@@ -41,35 +39,23 @@ export default function AIAssistant() {
       for (const file of files) {
         const fileName = `${Date.now()}-${file.name}`;
 
-        // ✅ Upload file
         const { error: uploadError } = await supabase.storage
           .from('cvs')
           .upload(fileName, file);
 
-        if (uploadError) {
-          console.error(uploadError);
-          continue;
-        }
+        if (uploadError) continue;
 
-        // ✅ Get public URL (FIXED ORDER)
         const { data: urlData } = supabase.storage
           .from('cvs')
           .getPublicUrl(fileName);
 
         const cvUrl = urlData.publicUrl;
 
-        console.log("Uploaded CV URL:", cvUrl);
-
-        // ✅ CALL EDGE FUNCTION (FIXED HEADERS)
         await fetch(
-          'https://tlzipklqaxiupbhggbnm.supabase.co/functions/v1/parse-cv',
+          'https://uoovbueakhhswpmythsb.supabase.co/functions/v1/parse-cv',
           {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ cv_url: cvUrl })
           }
         );
@@ -81,16 +67,13 @@ export default function AIAssistant() {
       await loadCandidates();
 
     } catch (err) {
-      console.error(err);
       toast.error("Some CVs failed to upload");
     } finally {
       setUploading(false);
     }
   };
 
-  // ============================
-  // SEARCH (UNCHANGED)
-  // ============================
+  // Search
   const runKeywordSearch = () => {
     if (!keyword.trim()) {
       loadCandidates();
@@ -112,9 +95,7 @@ export default function AIAssistant() {
     toast.success(`Found ${filtered.length} matching candidates`);
   };
 
-  // ============================
-  // SHORTLIST (UNCHANGED)
-  // ============================
+  // Shortlist
   const toggleShortlist = async (c) => {
     const updated = !c.shortlisted;
 
@@ -130,9 +111,7 @@ export default function AIAssistant() {
     );
   };
 
-  // ============================
-  // AI MATCHING (FIXED HEADERS)
-  // ============================
+  // Semantic AI Matching
   const runAIScoring = async () => {
     if (!jobDescription.trim()) {
       toast.error("Please enter job description");
@@ -143,14 +122,10 @@ export default function AIAssistant() {
 
     try {
       const response = await fetch(
-        'https://tlzipklqaxiupbhggbnm.supabase.co/functions/v1/semantic-match',
+        'https://uoovbueakhhswpmythsb.supabase.co/functions/v1/semantic-match',
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ job_description: jobDescription })
         }
       );
@@ -177,7 +152,7 @@ export default function AIAssistant() {
   return (
     <div className="p-6 space-y-6">
 
-      {/* CV Upload */}
+      {/* Bulk CV Upload */}
       <div>
         <input
           type="file"
@@ -189,7 +164,7 @@ export default function AIAssistant() {
         {uploading && <p className="text-sm text-blue-600 mt-1">Processing CVs... Please wait</p>}
       </div>
 
-      {/* Search */}
+      {/* Keyword Search */}
       <div className="flex gap-2">
         <Input
           placeholder="Search (sales AND johannesburg OR marketing)"
@@ -210,7 +185,7 @@ export default function AIAssistant() {
         {matching ? "Running Semantic Match..." : "Run AI Matching"}
       </Button>
 
-      {/* Candidates */}
+      {/* Candidates List */}
       {candidates.map((c, i) => (
         <Card key={c.id} className="p-4">
           {i < 3 && (
@@ -239,7 +214,7 @@ export default function AIAssistant() {
                 {c.cv_file_path && (
                   <Button
                     size="sm"
-                    onClick={() => window.open(c.cv_file_path, '_blank')}
+                    onClick={() => window.open(c.cv_file_path, '_blank', 'noopener,noreferrer')}
                   >
                     <Eye size={16} />
                   </Button>

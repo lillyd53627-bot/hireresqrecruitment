@@ -1,78 +1,97 @@
-  // ============================
-  // IMPROVED BULK CV UPLOAD - Version 2
-  // ============================
-  const handleCVUpload = async (files) => {
-    if (!files || files.length === 0) return;
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-    setUploading(true);
-    let successCount = 0;
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Content-Type': 'application/json'
+};
 
-    try {
-      for (const file of files) {
-        if (file.type !== "application/pdf") {
-          console.warn("Skipping non-PDF file:", file.name);
-          continue;
-        }
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
 
-        // Clean file name
-        const fileExt = file.name.split('.').pop();
-        const cleanFileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+  try {
+    const { cv_url, user_id } = await req.json();
 
-        // Upload to Supabase Storage
-        const { error: uploadError } = await supabase.storage
-          .from('cvs')
-          .upload(cleanFileName, file, { upsert: true });
-
-        if (uploadError) {
-          console.error("Upload failed for", file.name, uploadError);
-          continue;
-        }
-
-        // Get public URL
-        const { data: urlData } = supabase.storage
-          .from('cvs')
-          .getPublicUrl(cleanFileName);
-
-        const cvUrl = urlData.publicUrl;
-
-        console.log("CV uploaded successfully:", cleanFileName);
-
-        // Call parse-cv Edge Function with user_id
-        const currentUser = await supabase.auth.getUser();
-        const userId = currentUser.data.user?.id;
-
-        const response = await fetch(
-          'https://tlzipklqaxiupbhggbnm.supabase.co/functions/v1/parse-cv',
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-            },
-            body: JSON.stringify({ 
-              cv_url: cvUrl, 
-              user_id: userId 
-            })
-          }
-        );
-
-        const result = await response.json();
-
-        if (result.success) {
-          successCount++;
-        } else {
-          console.error("Parse failed for", file.name, result.error);
-        }
-      }
-
-      toast.success(`✅ Successfully processed ${successCount} CV(s)`);
-      await loadCandidates();   // Refresh candidate list
-
-    } catch (err) {
-      console.error("Bulk upload error:", err);
-      toast.error("Bulk CV upload failed. Please try again.");
-    } finally {
-      setUploading(false);
+    if (!cv_url) {
+      return new Response(JSON.stringify({ success: false, error: 'Missing CV URL' }), 
+        { headers: corsHeaders, status: 400 });
     }
-  };
+
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
+
+    // Step 1: Download the PDF as ArrayBuffer
+    const pdfResponse = await fetch(cv_url);
+    if (!pdfResponse.ok) throw new Error('Failed to fetch PDF');
+    
+    const pdfBuffer = new Uint8Array(await pdfResponse.arrayBuffer());
+
+    // Step 2: Simple but effective text extraction using pdf.js (works in Deno)
+    const pdfjsLib = await import('https://esm.sh/pdfjs-dist@4.0.379/build/pdf.min.js');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://esm.sh/pdfjs-dist@4.0.379/build/pdf.worker.min.js';
+
+    const loadingTask = pdfjsLib.getDocument({ data: pdfBuffer });
+    const pdf = await loadingTask.promise;
+
+    let fullText = '';
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items.map((item: any) => item.str).join(' ');
+      fullText += pageText + '\n\n';
+    }
+
+    // Step 3: Generate Embedding using Supabase built-in AI (recommended for speed & cost)
+    const session = new Supabase.ai.Session('gte-small');   // Built-in model
+    const embeddingResult = await session.run(fullText.substring(0, 8000), {  // Limit length
+      mean_pool: true,
+      normalize: true,
+    });
+
+    const embedding = embeddingResult.embedding;
+
+    // Step 4: Save to candidates table
+    const candidate = {
+      user_id: user_id,
+      name: "Extracted Candidate",           // TODO: Improve name extraction
+      title: "Unknown",
+      location: "South Africa",
+      raw_cv_text: fullText,
+      parsed_data: { raw_text: fullText },
+      embedding: embedding,                  // Save vector
+      skills: [],                            // TODO: Extract skills
+      stage: 'sourced',
+      status: 'active',
+      cv_file_path: cv_url,
+      source: 'upload'
+    };
+
+    const { data, error } = await supabase
+      .from('candidates')
+      .insert([candidate])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return new Response(JSON.stringify({
+      success: true,
+      candidate: data,
+      text_length: fullText.length
+    }), { headers: corsHeaders });
+
+  } catch (err) {
+    console.error("parse-cv error:", err);
+    return new Response(JSON.stringify({
+      success: false,
+      error: err.message
+    }), { 
+      headers: corsHeaders, 
+      status: 500 
+    });
+  }
+});

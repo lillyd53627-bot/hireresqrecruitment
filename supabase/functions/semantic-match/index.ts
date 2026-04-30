@@ -1,93 +1,75 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import OpenAI from "https://esm.sh/openai";
+// =============================================
+// semantic-match - For new project uoovbueakhhswpmythsb
+// =============================================
 
-const openai = new OpenAI({
-  apiKey: Deno.env.get("OPENAI_API_KEY")
-});
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS'
+  'Content-Type': 'application/json'
 };
 
 Deno.serve(async (req) => {
-
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    const { job_description } = await req.json();
-    if (!job_description) throw new Error("Missing job description");
+    const {
+      job_description,
+      match_threshold = 0.75,
+      match_count = 15
+    } = await req.json();
+
+    if (!job_description || job_description.trim() === '') {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Job description is required'
+      }), { headers: corsHeaders, status: 400 });
+    }
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // =============================
-    // SAFE JOB EMBEDDING
-    // =============================
-    let jobEmbedding = null;
+    // Generate embedding using Supabase's built-in model
+    const session = new Supabase.ai.Session('gte-small');
+   
+    const embeddingResult = await session.run(job_description.trim(), {
+      mean_pool: true,
+      normalize: true,
+    });
 
-    try {
-      const emb = await openai.embeddings.create({
-        model: "text-embedding-3-small",
-        input: job_description
+    const queryEmbedding = embeddingResult.embedding;
+
+    // Call the SQL similarity search function
+    const { data: scoredCandidates, error } = await supabase
+      .rpc('match_candidates', {
+        query_embedding: queryEmbedding,
+        match_threshold: match_threshold,
+        match_count: match_count
       });
 
-      jobEmbedding = emb?.data?.[0]?.embedding;
-    } catch (e) {
-      console.log("Embedding failed");
-      throw new Error("Embedding generation failed");
+    if (error) {
+      console.error("RPC Error:", error);
+      throw error;
     }
-
-    if (!jobEmbedding) throw new Error("No embedding generated");
-
-    // =============================
-    // GET CANDIDATES
-    // =============================
-    const { data: candidates } = await supabase
-      .from('candidates')
-      .select('*');
-
-    // =============================
-    // COSINE SIMILARITY
-    // =============================
-    const cosine = (a, b) => {
-      const dot = a.reduce((sum, val, i) => sum + val * b[i], 0);
-      const magA = Math.sqrt(a.reduce((sum, val) => sum + val * val, 0));
-      const magB = Math.sqrt(b.reduce((sum, val) => sum + val * val, 0));
-      return dot / (magA * magB);
-    };
-
-    const scored = (candidates || [])
-      .filter(c => c.embedding)
-      .map(c => {
-        const sim = cosine(jobEmbedding, c.embedding);
-        return {
-          ...c,
-          match_score: Math.round(sim * 100),
-          reason: "AI semantic match"
-        };
-      })
-      .sort((a, b) => b.match_score - a.match_score);
 
     return new Response(JSON.stringify({
       success: true,
-      scoredCandidates: scored,
-      count: scored.length
+      count: scoredCandidates?.length || 0,
+      scoredCandidates: scoredCandidates || [],
+      message: `Found ${scoredCandidates?.length || 0} matching candidates`
     }), {
       headers: corsHeaders
     });
 
   } catch (err) {
-    console.error("semantic-match ERROR:", err);
-
+    console.error("Semantic Match Error:", err);
     return new Response(JSON.stringify({
       success: false,
-      error: err.message
+      error: err.message || 'Failed to perform semantic matching'
     }), {
       headers: corsHeaders,
       status: 500
