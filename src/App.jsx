@@ -51,9 +51,9 @@ import OnboardingWorkflows from "./pages/Dashboard/OnboardingWorkflows";
 import Settings from "./pages/Dashboard/Settings";
 
 // Affiliate Pages
-import AffiliateLanding from "./pages/affiliatelanding";
-import AffiliateRegister from "./pages/affiliateregister";
-import AffiliateDashboard from "./pages/affiliatedashboard";
+import AffiliateLanding from "./pages/affiliateLanding";
+import AffiliateRegister from "./pages/affiliateRegister";
+import AffiliateDashboard from "./pages/affiliateDashboard";
 
 function App() {
   return (
@@ -92,9 +92,9 @@ function App() {
       <Route path="/demo/job-tracker" element={<JobTrackerDemo />} />
 
       {/* Affiliate */}
-      <Route path="/affiliate" element={<affiliatelanding />} />
-      <Route path="/affiliate/register" element={<affiliateregister />} />
-      <Route path="/affiliate/dashboard" element={<affiliatedashboard />} />
+      <Route path="/affiliate" element={<AffiliateLanding />} />
+      <Route path="/affiliate/register" element={<AffiliateRegister />} />
+      <Route path="/affiliate/dashboard" element={<AffiliateDashboard />} />
 
       {/* Dashboard */}
       <Route path="/dashboard" element={<DashboardLayout />}>
