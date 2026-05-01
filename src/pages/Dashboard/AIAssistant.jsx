@@ -24,11 +24,16 @@ export default function AIAssistant() {
       .select('*')
       .order('created_at', { ascending: false });
 
-    const sorted = (data || []).sort((a, b) => (b.match_score || 0) - (a.match_score || 0));
+    const sorted = (data || []).sort(
+      (a, b) => (b.match_score || 0) - (a.match_score || 0)
+    );
+
     setCandidates(sorted);
   };
 
-  // Bulk CV Upload
+  // ============================
+  // BULK CV UPLOAD
+  // ============================
   const handleCVUpload = async (files) => {
     if (!files || files.length === 0) return;
 
@@ -36,44 +41,54 @@ export default function AIAssistant() {
     let successCount = 0;
 
     try {
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData?.user?.id;
+
       for (const file of files) {
         const fileName = `${Date.now()}-${file.name}`;
 
-        const { error: uploadError } = await supabase.storage
+        const { error } = await supabase.storage
           .from('cvs')
-          .upload(fileName, file);
+          .upload(fileName, file, { upsert: true });
 
-        if (uploadError) continue;
+        if (error) continue;
 
-        const { data: urlData } = supabase.storage
-          .from('cvs')
-          .getPublicUrl(fileName);
-
-        const cvUrl = urlData.publicUrl;
+        const { data: urlData } = supabase.storage.from('cvs').getPublicUrl(fileName);
+          const cvUrl = urlData.publicUrl;
 
         await fetch(
           'https://uoovbueakhhswpmythsb.supabase.co/functions/v1/parse-cv',
           {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ cv_url: cvUrl })
+            headers: {
+              'Content-Type': 'application/json',
+              apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+            },
+            body: JSON.stringify({
+              cv_url: data.publicUrl,
+              user_id: userId
+            })
           }
         );
 
         successCount++;
       }
 
-      toast.success(`Successfully processed ${successCount} CV(s)`);
-      await loadCandidates();
+      toast.success(`Processed ${successCount} CV(s)`);
+      loadCandidates();
 
     } catch (err) {
-      toast.error("Some CVs failed to upload");
+      console.error(err);
+      toast.error("Upload failed");
     } finally {
       setUploading(false);
     }
   };
 
-  // Search
+  // ============================
+  // KEYWORD SEARCH
+  // ============================
   const runKeywordSearch = () => {
     if (!keyword.trim()) {
       loadCandidates();
@@ -95,7 +110,9 @@ export default function AIAssistant() {
     toast.success(`Found ${filtered.length} matching candidates`);
   };
 
-  // Shortlist
+  // ============================
+  // SHORTLIST TOGGLE
+  // ============================
   const toggleShortlist = async (c) => {
     const updated = !c.shortlisted;
 
@@ -111,7 +128,9 @@ export default function AIAssistant() {
     );
   };
 
-  // Semantic AI Matching
+  // ============================
+  // AI MATCHING
+  // ============================
   const runAIScoring = async () => {
     if (!jobDescription.trim()) {
       toast.error("Please enter job description");
@@ -121,28 +140,33 @@ export default function AIAssistant() {
     setMatching(true);
 
     try {
-      const response = await fetch(
+      const res = await fetch(
         'https://uoovbueakhhswpmythsb.supabase.co/functions/v1/semantic-match',
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+          },
           body: JSON.stringify({ job_description: jobDescription })
         }
       );
 
-      const result = await response.json();
+      const result = await res.json();
 
-      if (result.success && result.scoredCandidates) {
-        setCandidates(result.scoredCandidates);
-        toast.success(`Semantic AI Match complete - ${result.count} candidates ranked`);
-      } else {
-        throw new Error(result.error || "Matching failed");
+      if (result.success) {
+        setCandidates(result.scoredCandidates || []);
+        toast.success("AI matching complete");
       }
-    } catch (err) {
-      console.error("Semantic matching error:", err);
-      toast.error("Semantic matching unavailable. Using basic ranking.");
 
-      const sorted = [...candidates].sort((a, b) => (b.match_score || 0) - (a.match_score || 0));
+    } catch (err) {
+      console.error(err);
+      toast.error("Matching failed - using fallback");
+
+      const sorted = [...candidates].sort(
+        (a, b) => (b.match_score || 0) - (a.match_score || 0)
+      );
       setCandidates(sorted);
     } finally {
       setMatching(false);
@@ -150,89 +174,100 @@ export default function AIAssistant() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 max-w-4xl">
 
-      {/* Bulk CV Upload */}
-      <div>
-        <input
-          type="file"
-          accept="application/pdf"
-          multiple
-          onChange={(e) => handleCVUpload(e.target.files)}
-          disabled={uploading}
-        />
-        {uploading && <p className="text-sm text-blue-600 mt-1">Processing CVs... Please wait</p>}
-      </div>
+      <div className="space-y-6">
 
-      {/* Keyword Search */}
-      <div className="flex gap-2">
-        <Input
-          placeholder="Search (sales AND johannesburg OR marketing)"
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
-        />
-        <Button onClick={runKeywordSearch}>Search</Button>
-      </div>
-
-      {/* Job Description */}
-      <Textarea
-        placeholder="Paste job description..."
-        value={jobDescription}
-        onChange={(e) => setJobDescription(e.target.value)}
-      />
-
-      <Button onClick={runAIScoring} disabled={matching}>
-        {matching ? "Running Semantic Match..." : "Run AI Matching"}
-      </Button>
-
-      {/* Candidates List */}
-      {candidates.map((c, i) => (
-        <Card key={c.id} className="p-4">
-          {i < 3 && (
-            <div className="text-xs text-green-600 font-bold mb-2">
-              ⭐ Top Candidate
-            </div>
+        {/* Upload */}
+        <div>
+          <input
+            type="file"
+            accept="application/pdf"
+            multiple
+            onChange={(e) => handleCVUpload(e.target.files)}
+            disabled={uploading}
+            className="block w-full text-sm text-gray-500 
+                       file:mr-4 file:py-3 file:px-6 file:rounded-xl 
+                       file:border-0 file:text-sm file:font-medium 
+                       file:bg-red-50 file:text-red-700 hover:file:bg-red-100"
+          />
+          {uploading && (
+            <p className="text-sm text-blue-600 mt-2">
+              Processing CVs... Please wait
+            </p>
           )}
+        </div>
 
-          <CardContent className="flex justify-between items-start">
-            <div>
-              <p className="font-bold text-lg">{c.name || "Unnamed Candidate"}</p>
-              <p className="text-gray-700">{c.title}</p>
-              <p className="text-xs text-gray-500">{c.location}</p>
+        {/* Search */}
+        <div className="flex gap-3">
+          <Input
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+            placeholder="Search (sales AND johannesburg OR marketing)"
+            className="flex-1"
+          />
+          <Button onClick={runKeywordSearch}>Search</Button>
+        </div>
 
-              {c.cv_file_path && (
-                <p className="text-xs text-green-600 mt-1">📄 CV Uploaded</p>
-              )}
-            </div>
+        {/* Job Description */}
+        <Textarea
+          value={jobDescription}
+          onChange={(e) => setJobDescription(e.target.value)}
+          placeholder="Enter job description..."
+          rows={4}
+        />
 
-            <div className="text-right">
-              <p className="text-green-600 font-bold">
-                {c.match_score || 0}% match
-              </p>
+        {/* AI Match */}
+        <Button onClick={runAIScoring} disabled={matching} size="lg">
+          {matching ? "Matching..." : "Run AI Matching"}
+        </Button>
 
-              <div className="flex gap-2 mt-3">
-                {c.cv_file_path && (
-                  <Button
-                    size="sm"
-                    onClick={() => window.open(c.cv_file_path, '_blank', 'noopener,noreferrer')}
-                  >
-                    <Eye size={16} />
-                  </Button>
-                )}
+        {/* Results */}
+        <div className="space-y-4">
+          {candidates.map((c) => (
+            <Card key={c.id} className="p-5">
+              <CardContent className="flex justify-between items-start p-0">
 
-                <Button
-                  size="sm"
-                  variant={c.shortlisted ? "default" : "outline"}
-                  onClick={() => toggleShortlist(c)}
-                >
-                  <Star size={16} />
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+                <div>
+                  <p className="font-bold text-lg">{c.name}</p>
+                  <p className="text-gray-700">{c.title}</p>
+                  {c.location && (
+                    <p className="text-sm text-gray-500">{c.location}</p>
+                  )}
+                </div>
 
+                <div className="text-right">
+                  <p className="text-xl font-semibold text-green-600">
+                    {c.match_score || 0}%
+                  </p>
+
+                  <div className="flex gap-3 mt-4">
+                    {c.cv_file_path && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => window.open(c.cv_file_path, '_blank')}
+                      >
+                        <Eye size={18} />
+                      </Button>
+                    )}
+
+                    <Button
+                      size="sm"
+                      variant={c.shortlisted ? "default" : "outline"}
+                      onClick={() => toggleShortlist(c)}
+                    >
+                      <Star size={18} />
+                    </Button>
+                  </div>
+                </div>
+
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+      </div>
     </div>
   );
 }

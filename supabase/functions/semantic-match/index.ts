@@ -1,5 +1,5 @@
 // =============================================
-// semantic-match - For new project uoovbueakhhswpmythsb
+// semantic-match - Fixed for new project
 // =============================================
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -15,11 +15,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const {
-      job_description,
-      match_threshold = 0.75,
-      match_count = 15
-    } = await req.json();
+    const { job_description, match_threshold = 0.75, match_count = 15 } = await req.json();
 
     if (!job_description || job_description.trim() === '') {
       return new Response(JSON.stringify({
@@ -33,7 +29,7 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // Generate embedding using Supabase's built-in model
+    // Generate embedding
     const session = new Supabase.ai.Session('gte-small');
    
     const embeddingResult = await session.run(job_description.trim(), {
@@ -43,7 +39,7 @@ Deno.serve(async (req) => {
 
     const queryEmbedding = embeddingResult.embedding;
 
-    // Call the SQL similarity search function
+    // Semantic search via RPC
     const { data: scoredCandidates, error } = await supabase
       .rpc('match_candidates', {
         query_embedding: queryEmbedding,
@@ -61,18 +57,13 @@ Deno.serve(async (req) => {
       count: scoredCandidates?.length || 0,
       scoredCandidates: scoredCandidates || [],
       message: `Found ${scoredCandidates?.length || 0} matching candidates`
-    }), {
-      headers: corsHeaders
-    });
+    }), { headers: corsHeaders });
 
   } catch (err) {
     console.error("Semantic Match Error:", err);
     return new Response(JSON.stringify({
       success: false,
       error: err.message || 'Failed to perform semantic matching'
-    }), {
-      headers: corsHeaders,
-      status: 500
-    });
+    }), { headers: corsHeaders, status: 500 });
   }
 });

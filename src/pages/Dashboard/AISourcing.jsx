@@ -18,9 +18,9 @@ export default function AISourcing() {
     try {
       console.log("🔄 Calling AI-Sourcing with query:", searchQuery);
 
-      const anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRsemlwa2xxYXhpdXBiaGdnYm5tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NjYwMjMsImV4cCI6MjA5MDE0MjAyM30.N-9NaDds_ZZ2sfL8Tp-WX_NRH2UOjzNrIbRbBpUcGPo";
+      const anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVvb3ZidWVha2hoc3dwbXl0aHNiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzQ5NzI5MiwiZXhwIjoyMDkzMDczMjkyfQ.-jnsfVBQP_750jKSNVNsYD3dap8NFvnfKTIYuNaWIQg";
 
-      const response = await fetch('https://tlzipklqaxiupbhggbnm.supabase.co/functions/v1/AI-Sourcing', {
+      const response = await fetch('https://uoovbueakhhswpmythsb.supabase.co.supabase.co/functions/v1/AI-Sourcing', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

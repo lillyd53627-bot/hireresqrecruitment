@@ -1,17 +1,11 @@
-import OpenAI from "https://esm.sh/openai@4.28.0";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS'
+  'Content-Type': 'application/json'
 };
 
-const openai = new OpenAI({
-  apiKey: Deno.env.get("OPENAI_API_KEY"),
-});
-
 Deno.serve(async (req) => {
-
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -19,41 +13,42 @@ Deno.serve(async (req) => {
   try {
     const { candidate, job_description } = await req.json();
 
-    const ai = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content: "You are a recruiter writing short outreach messages."
-        },
-        {
-          role: "user",
-          content: `
-Candidate: ${candidate.name}
-Role: ${candidate.title}
-Skills: ${candidate.skills}
+    if (!candidate) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Missing candidate'
+      }), { headers: corsHeaders, status: 400 });
+    }
 
-Job:
-${job_description}
+    const message = `Hi ${candidate.name || 'there'},
 
-Write:
-1. WhatsApp message
-2. Email message
-          `
-        }
-      ]
-    });
+We found a strong opportunity for you based on your experience as ${candidate.title || 'a professional'}.
 
-    const text = ai.choices?.[0]?.message?.content || "";
+Top matching skills:
+${(candidate.skills || []).join(', ')}
+
+This role aligns closely with your background.
+
+👉 View opportunity:
+https://yourapp.com/dashboard
+
+Let’s get you placed 🚀`;
+
+    const whatsappLink = `https://wa.me/${candidate.phone || ''}?text=${encodeURIComponent(message)}`;
 
     return new Response(JSON.stringify({
       success: true,
-      message: text
+      message,
+      whatsapp_link: whatsappLink,
+      email_subject: "New Opportunity Based On Your Profile",
+      email_body: message
     }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      headers: corsHeaders
     });
 
   } catch (err) {
+    console.error("Outreach error:", err);
+
     return new Response(JSON.stringify({
       success: false,
       error: err.message

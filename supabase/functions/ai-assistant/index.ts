@@ -29,7 +29,7 @@ export default function AIAssistant() {
   };
 
   // ============================
-  // IMPROVED BULK CV UPLOAD (Version 2)
+  // IMPROVED BULK CV UPLOAD
   // ============================
   const handleCVUpload = async (files) => {
     if (!files || files.length === 0) return;
@@ -39,38 +39,25 @@ export default function AIAssistant() {
 
     try {
       for (const file of files) {
-        if (file.type !== "application/pdf") {
-          console.warn("Skipping non-PDF file:", file.name);
-          continue;
-        }
+        const fileName = `${Date.now()}-${file.name}`;
 
-        // Clean file name
-        const fileExt = file.name.split('.').pop();
-        const cleanFileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-
-        // Upload CV to Storage
+        // ✅ Upload CV to Storage
         const { error: uploadError } = await supabase.storage
           .from('cvs')
-          .upload(cleanFileName, file, { upsert: true });
+          .upload(fileName, file, { upsert: true });
 
         if (uploadError) {
-          console.error("Upload failed for", file.name, uploadError);
+          console.error("Upload error:", uploadError);
           continue;
         }
 
-        // Get public URL
-        const { data: urlData } = supabase.storage
-          .from('cvs')
-          .getPublicUrl(cleanFileName);
-
+        // ✅ Get public URL
+        const { data: urlData } = supabase.storage.from('cvs').getPublicUrl(fileName);
         const cvUrl = urlData.publicUrl;
 
-        console.log("CV uploaded successfully:", cleanFileName);
+        console.log("Uploaded CV URL:", cvUrl);
 
-        // Call parse-cv Edge Function with user_id
-        const currentUser = await supabase.auth.getUser();
-        const userId = currentUser.data.user?.id;
-
+        // ✅ Call Edge Function to parse CV
         const response = await fetch(
           'https://tlzipklqaxiupbhggbnm.supabase.co/functions/v1/parse-cv',
           {
@@ -80,19 +67,38 @@ export default function AIAssistant() {
               'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
               'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
             },
-            body: JSON.stringify({ 
-              cv_url: cvUrl, 
-              user_id: userId 
-            })
+            body: JSON.stringify({ cv_url: cvUrl })
           }
         );
 
         const result = await response.json();
 
-        if (result.success) {
-          successCount++;
+        // ✅ Insert/Update candidate with user_id (Critical for RLS)
+        if (result.success && result.candidate) {
+          const { error: insertError } = await supabase
+            .from('candidates')
+            .upsert({
+              id: result.candidate.id || undefined,
+              user_id: (await supabase.auth.getUser()).data.user?.id,
+              name: result.candidate.name || file.name.replace('.pdf', ''),
+              title: result.candidate.title,
+              email: result.candidate.email,
+              phone: result.candidate.phone,
+              location: result.candidate.location,
+              cv_file_path: fileName,
+              raw_cv_text: result.candidate.raw_text || null,
+              parsed_data: result.candidate.parsed_data || null,
+              stage: 'sourced',
+              status: 'active'
+            }, { onConflict: 'id' });
+
+          if (insertError) {
+            console.error("Insert error:", insertError);
+          } else {
+            successCount++;
+          }
         } else {
-          console.error("Parse failed for", file.name, result.error);
+          console.warn("Parse result did not return candidate data");
         }
       }
 
@@ -100,8 +106,8 @@ export default function AIAssistant() {
       await loadCandidates();   // Refresh the list
 
     } catch (err) {
-      console.error("Bulk upload error:", err);
-      toast.error("Bulk CV upload failed. Please try again.");
+      console.error(err);
+      toast.error("Some CVs failed to upload");
     } finally {
       setUploading(false);
     }
@@ -162,7 +168,7 @@ export default function AIAssistant() {
 
     try {
       const response = await fetch(
-        'https://tlzipklqaxiupbhggbnm.supabase.co/functions/v1/semantic-match',
+        'https://uoovbueakhhswpmythsb.supabase.co/functions/v1/semantic-match',
         {
           method: 'POST',
           headers: {

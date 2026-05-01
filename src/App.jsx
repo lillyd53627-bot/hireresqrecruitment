@@ -1,5 +1,5 @@
 // src/App.jsx
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 
 // Public Pages
 import Home from "./pages/Home";
@@ -16,7 +16,7 @@ import Security from "./pages/Security";
 import POPIA from "./pages/POPIA";
 import Demo from "./pages/Demo";
 
-// Feature Demo Pages (public)
+// Feature Demo Pages
 import AIClientFinderDemo from "./pages/FeaturesDemo/AIClientFinderDemo";
 import AIOutreachDemo from "./pages/FeaturesDemo/AIOutreachDemo";
 import AITalentSourcingDemo from "./pages/FeaturesDemo/AITalentSourcingDemo";
@@ -37,7 +37,7 @@ import DashboardLayout from "./components/Dashboard/DashboardLayout";
 import Dashboard from "./pages/Dashboard/Dashboard";
 import AdminDashboard from "./pages/Dashboard/AdminDashboard";
 
-// === REAL DASHBOARD PAGES ===
+// Real Dashboard Pages
 import AIAssistant from "./pages/Dashboard/AIAssistant";
 import AISourcing from "./pages/Dashboard/AISourcing";
 import Candidates from "./pages/Dashboard/Candidates";
@@ -50,86 +50,73 @@ import AISmartReporting from "./pages/Dashboard/AISmartReporting";
 import OnboardingWorkflows from "./pages/Dashboard/OnboardingWorkflows";
 import Settings from "./pages/Dashboard/Settings";
 
+// Affiliate Pages
+import AffiliateLanding from "./pages/AffiliateLanding";
+import AffiliateRegister from "./pages/AffiliateRegister";
+import AffiliateDashboard from "./pages/AffiliateDashboard";
+
 function App() {
   return (
-    <BrowserRouter
-      future={{
-        v7_startTransition: true,
-        v7_relativeSplatPath: true,
-      }}
-    >
-      <Routes>
-        {/* Public Routes */}
-        <Route path="/" element={<Home />} />
-        <Route path="/pricing" element={<Pricing />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/payment-success" element={<PaymentSuccess />} />
-        <Route path="/login" element={<Login />} />
+    <Routes>
 
-        {/* Header/Footer Links */}
-        <Route path="/features" element={<Demo />} />
-        <Route path="/about" element={<About />} />
-        <Route path="/contact" element={<Contact />} />
-        <Route path="/faq" element={<FAQ />} />
-        <Route path="/demo" element={<Demo />} />
+      {/* Public Routes */}
+      <Route path="/" element={<Home />} />
+      <Route path="/pricing" element={<Pricing />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/payment-success" element={<PaymentSuccess />} />
+      <Route path="/login" element={<Login />} />
 
-        {/* Legal Pages */}
-        <Route path="/terms" element={<TermsOfService />} />
-        <Route path="/privacy" element={<PrivacyPolicy />} />
-        <Route path="/security" element={<Security />} />
-        <Route path="/popia" element={<POPIA />} />
+      {/* Info Pages */}
+      <Route path="/features" element={<Demo />} />
+      <Route path="/about" element={<About />} />
+      <Route path="/contact" element={<Contact />} />
+      <Route path="/faq" element={<FAQ />} />
+      <Route path="/demo" element={<Demo />} />
 
-        {/* Public Feature Demos */}
-        <Route path="/demo/ai-client-finder" element={<AIClientFinderDemo />} />
-        <Route path="/demo/ai-outreach-engine" element={<AIOutreachDemo />} />
-        <Route path="/demo/ai-talent-sourcing" element={<AITalentSourcingDemo />} />
-        <Route path="/demo/ai-video-screening" element={<AIVideoScreeningDemo />} />
-        <Route path="/demo/smart-reporting" element={<AISmartReportingDemo />} />
-        <Route path="/demo/ai-assistant" element={<AIAssistantDemo />} />
-        <Route path="/demo/automated-invoicing" element={<AutomatedInvoicingDemo />} />
-        <Route path="/demo/candidate-portal" element={<CandidatePortalDemo />} />
-        <Route path="/demo/client-portal" element={<ClientPortalDemo />} />
-        <Route path="/demo/job-tracker" element={<JobTrackerDemo />} />
+      {/* Legal */}
+      <Route path="/terms" element={<TermsOfService />} />
+      <Route path="/privacy" element={<PrivacyPolicy />} />
+      <Route path="/security" element={<Security />} />
+      <Route path="/popia" element={<POPIA />} />
 
-        {/* REAL DASHBOARD */}
-        <Route path="/dashboard" element={<DashboardLayout />}>
-          <Route index element={<Dashboard />} />
-          <Route path="aiassistant" element={<AIAssistant />} />
-          <Route path="aisourcing" element={<AISourcing />} />
-          <Route path="candidates" element={<Candidates />} />
-          <Route path="jobs" element={<JobTracker />} />
-          <Route path="aiclientfinder" element={<AIClientFinder />} />
-          <Route path="admin" element={<AdminDashboard />} />
+      {/* Demo Features */}
+      <Route path="/demo/ai-client-finder" element={<AIClientFinderDemo />} />
+      <Route path="/demo/ai-outreach-engine" element={<AIOutreachDemo />} />
+      <Route path="/demo/ai-talent-sourcing" element={<AITalentSourcingDemo />} />
+      <Route path="/demo/ai-video-screening" element={<AIVideoScreeningDemo />} />
+      <Route path="/demo/smart-reporting" element={<AISmartReportingDemo />} />
+      <Route path="/demo/ai-assistant" element={<AIAssistantDemo />} />
+      <Route path="/demo/automated-invoicing" element={<AutomatedInvoicingDemo />} />
+      <Route path="/demo/candidate-portal" element={<CandidatePortalDemo />} />
+      <Route path="/demo/client-portal" element={<ClientPortalDemo />} />
+      <Route path="/demo/job-tracker" element={<JobTrackerDemo />} />
 
-          <Route path="clients" element={<Clients />} />
-          <Route path="outreach" element={<Outreach />} />
+      {/* Affiliate */}
+      <Route path="/affiliate" element={<AffiliateLanding />} />
+      <Route path="/affiliate/register" element={<AffiliateRegister />} />
+      <Route path="/affiliate/dashboard" element={<AffiliateDashboard />} />
 
-          <Route path="interviews" element={<Interviews />} />
-          <Route path="analytics" element={<AISmartReporting />} />
-          <Route path="onboardingworkflows" element={<OnboardingWorkflows />} />
-          <Route path="settings" element={<Settings />} />
-        </Route>
+      {/* Dashboard */}
+      <Route path="/dashboard" element={<DashboardLayout />}>
+        <Route index element={<Dashboard />} />
+        <Route path="aiassistant" element={<AIAssistant />} />
+        <Route path="aisourcing" element={<AISourcing />} />
+        <Route path="candidates" element={<Candidates />} />
+        <Route path="jobs" element={<JobTracker />} />
+        <Route path="aiclientfinder" element={<AIClientFinder />} />
+        <Route path="admin" element={<AdminDashboard />} />
+        <Route path="clients" element={<Clients />} />
+        <Route path="outreach" element={<Outreach />} />
+        <Route path="interviews" element={<Interviews />} />
+        <Route path="analytics" element={<AISmartReporting />} />
+        <Route path="onboardingworkflows" element={<OnboardingWorkflows />} />
+        <Route path="settings" element={<Settings />} />
+      </Route>
 
-        {/* 404 */}
-        <Route
-          path="*"
-          element={
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-              <div className="text-center">
-                <h1 className="text-6xl font-bold text-gray-800">404</h1>
-                <p className="text-2xl text-gray-600 mt-4">Page Not Found</p>
-                <a
-                  href="/"
-                  className="mt-8 inline-block bg-red-600 text-white px-8 py-4 rounded-2xl hover:bg-red-700"
-                >
-                  Back to Home
-                </a>
-              </div>
-            </div>
-          }
-        />
-      </Routes>
-    </BrowserRouter>
+      {/* 404 */}
+      <Route path="*" element={<div>404 Not Found</div>} />
+
+    </Routes>
   );
 }
 
