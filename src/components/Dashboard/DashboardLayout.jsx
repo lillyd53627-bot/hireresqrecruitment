@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import Sidebar from "@/components/dashboard/Sidebar";
+import Sidebar from "./Sidebar";                    // ← Changed to relative import
 import { Outlet } from "react-router-dom";
 
 export default function DashboardLayout() {
@@ -7,28 +7,16 @@ export default function DashboardLayout() {
 
   return (
     <div className="flex">
-      
       {/* SIDEBAR */}
       <Sidebar
         isCollapsed={isCollapsed}
-        onToggle={() => setIsCollapsed(!isCollapsed)}
+        setIsCollapsed={setIsCollapsed}
       />
 
       {/* MAIN CONTENT */}
-      <main
-        className={`flex-1 min-h-screen transition-all duration-300 ${
-          isCollapsed ? "ml-20" : "ml-64"
-        }`}
-      >
-        <div className="p-6">
-          <Outlet />
-        </div>
-      </main>
-
+      <div className={`flex-1 transition-all duration-300 ${isCollapsed ? 'ml-20' : 'ml-72'}`}>
+        <Outlet />
+      </div>
     </div>
   );
 }
-
-
-
-
