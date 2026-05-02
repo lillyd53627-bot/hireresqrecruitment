@@ -1,4 +1,4 @@
-// src/pages/AffiliateDashboard.jsx
+// Updated on 2026-05-02// src/pages/AffiliateDashboard.jsx
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Copy, User, Gift, FileText, Wallet, Settings, MessageCircle, Users } from "lucide-react";
