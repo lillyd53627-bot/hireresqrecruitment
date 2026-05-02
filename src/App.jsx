@@ -51,9 +51,9 @@ import OnboardingWorkflows from "./pages/Dashboard/OnboardingWorkflows";
 import Settings from "./pages/Dashboard/Settings";
 
 // Affiliate Pages
-import AffiliateLanding from "./pages/affiliateLanding";
-import AffiliateRegister from "./pages/affiliateRegister";
-import AffiliateDashboard from "./pages/affiliateDashboard";
+import AffiliateLanding from "./pages/AffiliateLanding";
+import AffiliateRegister from "./pages/AffiliateRegister";
+import AffiliateDashboard from "./pages/AffiliateDashboard";
 
 function App() {
   return (
