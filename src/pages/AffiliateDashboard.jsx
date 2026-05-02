@@ -2,6 +2,12 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Copy, User, Gift, FileText, Wallet, Settings, MessageCircle, Users } from "lucide-react";
+import Logo from "@/assets/HireResQ.png";     // ← Added this line
+
+
+        <div className="mb-10">
+          <img src={Logo} alt="HireResQ" className="h-12" />
+        </div>
 
 export default function AffiliateDashboard() {
   const [affiliate, setAffiliate] = useState(null);

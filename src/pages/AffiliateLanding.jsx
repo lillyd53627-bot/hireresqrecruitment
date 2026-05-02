@@ -1,4 +1,18 @@
-export default function AffiliateLanding() {
+import React from 'react';
+import Logo from "@/assets/HireResQ.png";   // ← Added this line
+
+// ... rest of your existing code remains untouched ...
+
+        {/* Logo */}
+        <div className="mb-8">
+          <img 
+            src={Logo} 
+            alt="HireResQ Logo" 
+            className="mx-auto h-28"
+          />
+        </div>
+
+// ... rest of your code remains exactly the same ...export default function AffiliateLanding() {
   return (
     <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6">
 
