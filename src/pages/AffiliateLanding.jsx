@@ -23,14 +23,10 @@ export default function AffiliateLanding() {
           <strong>40% commission</strong> on every sale + recurring monthly income.
         </p>
 
-        {/* Earnings Box */}
         <div className="bg-zinc-900 border border-red-600/30 rounded-3xl p-8 mb-10 max-w-lg mx-auto">
           <h2 className="text-3xl font-bold mb-4 text-white">💰 Earn R8,000 to R15,000+ Per Week</h2>
           <p className="text-2xl text-red-500 font-semibold mb-2">
             With just a few successful referrals
-          </p>
-          <p className="text-gray-400">
-            Average performers are making serious side income — top affiliates earn even more.
           </p>
         </div>
 
@@ -39,7 +35,7 @@ export default function AffiliateLanding() {
             <div className="text-4xl mb-3">🎯</div>
             <h3 className="font-semibold mb-2 text-white">Who You Promote To</h3>
             <p className="text-gray-400 text-sm">
-              Entrepreneurs who want to start a recruitment business, Recruiters, Employment Agencies, HR Consultants & companies
+              Recruiters, Employment Agencies, HR Consultants & Entrepreneurs who want to grow their recruitment business.
             </p>
           </div>
 
@@ -60,7 +56,6 @@ export default function AffiliateLanding() {
           </div>
         </div>
 
-        {/* Fixed Link */}
         <a
           href="/affiliate/register"
           className="inline-block bg-red-600 hover:bg-red-700 text-white font-bold text-xl px-12 py-5 rounded-2xl transition-all duration-300 shadow-xl hover:scale-105"

@@ -1,0 +1,53 @@
+Create a database table for candidates with fields like name, email, skills, experience, location, salary_expectations, and availability. Add an edge function to search and filter candidates. Update the CandidateMinerView to fetch real candidate data from database instead of mock data, with search, filtering, and pagination functionality.
+
+Integrate an email service (like Resend or SendGrid) to send real outreach emails from the AI Outreach module. Create an edge function that accepts email templates, recipient info, and sends personalized emails. Track email opens, clicks, and responses in a new email_campaigns table.
+
+Create an edge function to send email notifications for subscription events using a transactional email service. Send welcome emails on subscription activation, reminder emails before renewal, and confirmation emails on cancellation. Integrate with the webhook handler to trigger emails automat
+ically.
+
+
+Implement role-based access control (RBAC) for different user types (admin, recruiter, client). Create middleware to check user roles before accessing certain views. Add an admin panel for managing users and their roles. Restrict certain modules like Recruiter Portal to users with recruiter role and Client Portal to users with client role.
+
+
+Add email verification flow after user signup. Create an edge function to send verification emails using a transactional email service. Show a verification pending state in the UI, handle email verification links, and prevent access to certain features until email is verified.
+
+Please make the following changes
+
+-Starter
+R1549/30 days
+5 active jobs
+100 AI Candidates Matches
+
+
+Growth
+R2999/30 days
+15 active jobs
+300 AI Candidate Matches
+
+
+Advance
+R4999
+30 Active Jobs
+600 AI Candidate Matches
+
+
+
+
+priortity support
+Client Finder
+AI Video Interview
+Job to cv matching scores
+whatsapp and email outreach
+Smart Reporting
+
+
+
+Advance
+
+
+
+
+
+
+
+

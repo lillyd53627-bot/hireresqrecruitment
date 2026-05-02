@@ -14,7 +14,8 @@ const plans = [
     period: "for 30 days",
     features: [
       "5 Active Jobs",
-      "50 AI Candidate Matches",           // ← Changed from 25 to 50
+      "100 AI Candidate Matches",           // Updated
+      "Candidate scoring and shortlisting", // Added as requested
       "Basic AI Screening",
       "AI Client Finder",
       "AI Outreach Engine",
@@ -30,11 +31,11 @@ const plans = [
     id: "growth",
     name: "Growth",
     subtitle: "Growing agencies",
-    price: "R3,999",
+    price: "R2,999",                        // Updated
     period: "for 30 days",
     features: [
       "15 Active Jobs",
-      "150 AI Candidate Matches",          // ← Changed from 100 to 150
+      "300 AI Candidate Matches",           // Updated
       "AI Video Screening",
       "Advanced Reporting",
       "Client Portal",
@@ -47,11 +48,11 @@ const plans = [
     id: "advance",
     name: "Advance",
     subtitle: "High-volume recruiters",
-    price: "R7,999",
+    price: "R4,999",                        // Updated
     period: "for 30 days",
     features: [
-      "50 Active Jobs",
-      "Unlimited AI Matches",
+      "30 Active Jobs",                     // Updated
+      "600 AI Candidate Matches",           // Updated
       "Full Automation Suite",
       "Priority Support",
       "White-label Options",

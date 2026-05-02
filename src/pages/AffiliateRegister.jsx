@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 export default function AffiliateRegister() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -11,7 +12,7 @@ export default function AffiliateRegister() {
 
   const handleRegister = async () => {
     if (!name || !email) {
-      setError("Please fill in Name and Email");
+      setError("Name and Email are required");
       return;
     }
 
@@ -24,26 +25,27 @@ export default function AffiliateRegister() {
       const { error: insertError } = await supabase.from("affiliates").insert({
         name: name.trim(),
         email: email.trim().toLowerCase(),
+        phone: phone.trim() || null,
         referral_code: code
-        // Removed 'status' and 'phone' to match your current table structure
+        // status removed to avoid column error
       });
 
       if (insertError) {
         console.error("Insert Error:", insertError);
-        if (insertError.message.includes("duplicate") || insertError.code === "23505") {
-          setError("This email is already registered. Please use a different email.");
+        if (insertError.code === "23505" || insertError.message.includes("duplicate")) {
+          setError("This email is already registered.");
         } else {
-          setError(`Registration failed: ${insertError.message}`);
+          setError(`Failed: ${insertError.message}`);
         }
         return;
       }
 
-      alert("✅ Registration successful! Welcome to the HireResQ Affiliate Program.");
+      alert("✅ Registration successful!");
       window.location.href = "/affiliate/dashboard";
 
     } catch (err) {
       console.error(err);
-      setError("Something went wrong. Please try again.");
+      setError("Registration failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -80,6 +82,14 @@ export default function AffiliateRegister() {
             className="w-full bg-zinc-800 border border-zinc-700 p-4 rounded-2xl focus:outline-none focus:border-red-600"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+          />
+
+          <input
+            type="tel"
+            placeholder="Phone Number (optional)"
+            className="w-full bg-zinc-800 border border-zinc-700 p-4 rounded-2xl focus:outline-none focus:border-red-600"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
           />
 
           <button

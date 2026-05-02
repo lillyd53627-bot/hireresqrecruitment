@@ -91,7 +91,7 @@ function App() {
       <Route path="/demo/client-portal" element={<ClientPortalDemo />} />
       <Route path="/demo/job-tracker" element={<JobTrackerDemo />} />
 
-      {/* Affiliate */}
+      {/* Affiliate Routes - FIXED */}
       <Route path="/affiliate" element={<AffiliateLanding />} />
       <Route path="/affiliate/register" element={<AffiliateRegister />} />
       <Route path="/affiliate/dashboard" element={<AffiliateDashboard />} />

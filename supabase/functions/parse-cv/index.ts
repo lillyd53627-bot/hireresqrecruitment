@@ -1,13 +1,13 @@
-// =============================================
-// parse-cv (WORKING VERSION - SIMPLE + RELIABLE)
-// =============================================
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import * as pdfjsLib from 'https://esm.sh/pdfjs-dist@4.0.379/build/pdf.min.js'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Content-Type': 'application/json',
+  'Content-Type': 'application/json'
 };
+
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://esm.sh/pdfjs-dist@4.0.379/build/pdf.worker.min.js';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -15,99 +15,110 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { cv_url, user_id, job_id = null } = await req.json();
+    const { cv_url, user_id } = await req.json();
 
     if (!cv_url) {
-      throw new Error("Missing CV URL");
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Missing cv_url'
+      }), { headers: corsHeaders, status: 400 });
     }
 
-    // ============================
-    // SUPABASE CLIENT
-    // ============================
+    console.log("📄 Fetching CV:", cv_url);
+
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
     // ============================
-    // 1. DOWNLOAD CV FILE
+    // 1. FETCH PDF
     // ============================
-    const fileRes = await fetch(cv_url);
+    const response = await fetch(cv_url);
 
-    if (!fileRes.ok) {
-      throw new Error("Failed to download CV");
+    if (!response.ok) {
+      throw new Error(`Failed to fetch PDF: ${response.status}`);
     }
 
-    const arrayBuffer = await fileRes.arrayBuffer();
+    const arrayBuffer = await response.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
 
     // ============================
-    // 2. EXTRACT TEXT (basic)
+    // 2. PARSE PDF TEXT
     // ============================
-    // NOTE: This is a fallback text extraction
-    const text = new TextDecoder().decode(arrayBuffer);
+    const loadingTask = pdfjsLib.getDocument({ data: uint8Array });
+    const pdf = await loadingTask.promise;
 
-    const cleanText = text
-      .replace(/\s+/g, ' ')
-      .slice(0, 5000); // prevent huge inserts
+    let fullText = '';
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+
+      const strings = content.items.map(item => item.str || '');
+      fullText += strings.join(' ') + '\n';
+    }
+
+    console.log("🧠 Extracted text length:", fullText.length);
+
+    if (!fullText || fullText.length < 50) {
+      throw new Error("PDF parsing failed - no readable text");
+    }
 
     // ============================
-    // 3. BASIC AI EXTRACTION (simple regex)
+    // 3. BASIC EXTRACTION
     // ============================
+    const lower = fullText.toLowerCase();
 
-    // Name (first line assumption)
-    const nameMatch = cleanText.match(/^[A-Z][a-z]+ [A-Z][a-z]+/);
-    const name = nameMatch ? nameMatch[0] : "Unknown Candidate";
-
-    // Title (basic guess)
-    const titleMatch = cleanText.match(/(developer|engineer|manager|sales|recruiter)/i);
-    const title = titleMatch ? titleMatch[0] : "Professional";
-
-    // Skills (keyword extraction)
     const skillKeywords = [
-      "javascript", "react", "node", "python",
-      "sales", "marketing", "recruitment",
-      "sql", "excel", "communication"
+      "sales","marketing","recruitment","sourcing","hr","talent",
+      "leadership","management","negotiation","communication",
+      "python","javascript","sql","excel","crm","ats",
+      "interview","hiring"
     ];
 
-    const skills = skillKeywords.filter(skill =>
-      cleanText.toLowerCase().includes(skill)
+    const extractedSkills = skillKeywords.filter(skill =>
+      lower.includes(skill)
     );
+
+    // VERY BASIC NAME DETECTION (first line)
+    const firstLine = fullText.split('\n')[0] || 'Candidate';
 
     // ============================
     // 4. INSERT INTO DATABASE
     // ============================
     const { data, error } = await supabase
       .from('candidates')
-      .insert([
-        {
-          name,
-          title,
-          skills,
-          raw_cv_text: cleanText,
-          cv_file_path: cv_url,
-          user_id,
-          job_id, // optional linking to job
-          stage: 'sourced',
-          match_score: 0,
-        }
-      ])
-      .select();
+      .insert({
+        user_id: user_id,
+        name: firstLine.substring(0, 80),
+        title: "Candidate",
+        location: null,
+        skills: extractedSkills.join(', ') || null,
+        raw_cv_text: fullText,
+        cv_file_path: cv_url,
+        stage: 'sourced',
+        match_score: 0
+      })
+      .select()
+      .single();
 
     if (error) {
-      console.error("DB Insert Error:", error);
+      console.error("❌ DB insert error:", error);
       throw error;
     }
 
+    console.log("✅ Candidate inserted:", data.id);
+
     return new Response(JSON.stringify({
       success: true,
-      candidate: data?.[0] || null,
-      message: "CV parsed and stored successfully"
-    }), {
-      headers: corsHeaders
-    });
+      candidate: data,
+      extracted_skills: extractedSkills,
+      text_length: fullText.length
+    }), { headers: corsHeaders });
 
   } catch (err) {
-    console.error("Parse CV Error:", err);
+    console.error("❌ parse-cv error:", err);
 
     return new Response(JSON.stringify({
       success: false,
