@@ -1,27 +1,15 @@
 import React from 'react';
-import Logo from "@/assets/HireResQ.png";   // ← Added this line
+import Logo from "@/assets/HireResQ.png";
 
-// ... rest of your existing code remains untouched ...
-
-        {/* Logo */}
-        <div className="mb-8">
-          <img 
-            src={Logo} 
-            alt="HireResQ Logo" 
-            className="mx-auto h-28"
-          />
-        </div>
-
-// ... rest of your code remains exactly the same ...export default function AffiliateLanding() {
+export default function AffiliateLanding() {
   return (
     <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6">
-
       <div className="text-center max-w-4xl mx-auto">
         
         {/* Logo */}
         <div className="mb-8">
           <img 
-            src="/HireResQ.png" 
+            src={Logo} 
             alt="HireResQ Logo" 
             className="mx-auto h-28"
           />
