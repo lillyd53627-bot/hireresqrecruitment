@@ -29,7 +29,7 @@ export default function PaystackPayment({ plan, amount, onSuccess }) {
       }
 
       const handler = window.PaystackPop.setup({
-        key: "pk_test_1e3c9cf56e6baaf0baa8481ef4eae75e1807e898",
+        key: "pk_live_cc5867f5fb5677cf09c944f61d1bc5692e8bb46e",
         email: user.email,
         amount: Math.round(amount * 100),
         currency: 'ZAR',

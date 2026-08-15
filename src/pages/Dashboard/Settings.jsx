@@ -1,181 +1,289 @@
-import React, { useState } from 'react';
-import { useOutletContext, useNavigate } from 'react-router-dom';
-
-import { 
-  User, Bell, Shield, CreditCard, Building2, Globe,
-  Mail, Key, Smartphone, Save, ChevronRight, Check, AlertCircle, Palette
-} from 'lucide-react';
-
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-
-import { supabase } from '@/lib/supabase';
-import { toast } from 'sonner';
+import React, { useState } from "react";
+import {
+  User,
+  Bell,
+  Shield,
+  CreditCard,
+  Save,
+} from "lucide-react";
 
 export default function Settings() {
-  const { currentPlan } = useOutletContext();
-  const navigate = useNavigate();
+  const [saved, setSaved] = useState(false);
 
-  const [saving, setSaving] = useState(false);
+  const [settings, setSettings] = useState({
+    fullName: "John Recruiter",
+    email: "",
+    company: "HireResQ",
+    notifications: true,
+    emailNotifications: true,
+  });
 
-  // Upgrade gate - only paid users can access full settings
-  if (!currentPlan?.plan) {
-    return (
-      <div className="text-center py-20">
-        <div className="mx-auto w-20 h-20 bg-gray-100 rounded-2xl flex items-center justify-center mb-8">
-          <Shield className="w-10 h-10 text-gray-500" />
-        </div>
-        <h2 className="text-4xl font-bold mb-4">Account Settings</h2>
-        <p className="text-xl text-gray-600 max-w-md mx-auto">
-          Manage your profile, notifications, security and billing.
-        </p>
-        <Button 
-          onClick={() => navigate('/pricing')} 
-          className="mt-8 bg-red-600 hover:bg-red-700"
-        >
-          Upgrade to Access Settings
-        </Button>
-      </div>
+  const handleChange = (field, value) => {
+    setSettings((current) => ({
+      ...current,
+      [field]: value,
+    }));
+
+    setSaved(false);
+  };
+
+  const handleSave = () => {
+    localStorage.setItem(
+      "hireresq_settings",
+      JSON.stringify(settings)
     );
-  }
 
-  const handleSaveProfile = async () => {
-    setSaving(true);
-    try {
-      const { error } = await supabase.auth.updateUser({
-        data: { full_name: "Updated Name" } // You can expand this later
-      });
-      if (error) throw error;
-      toast.success('Profile updated successfully');
-    } catch (error) {
-      toast.error('Failed to save profile');
-    } finally {
-      setSaving(false);
-    }
+    setSaved(true);
+
+    setTimeout(() => {
+      setSaved(false);
+    }, 3000);
   };
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
-      <Tabs defaultValue="profile" className="space-y-8">
-        <TabsList className="bg-white border p-1">
-          <TabsTrigger value="profile" className="data-[state=active]:bg-red-600 data-[state=active]:text-white gap-2">
-            <User className="w-4 h-4" /> Profile
-          </TabsTrigger>
-          <TabsTrigger value="notifications" className="data-[state=active]:bg-red-600 data-[state=active]:text-white gap-2">
-            <Bell className="w-4 h-4" /> Notifications
-          </TabsTrigger>
-          <TabsTrigger value="security" className="data-[state=active]:bg-red-600 data-[state=active]:text-white gap-2">
-            <Shield className="w-4 h-4" /> Security
-          </TabsTrigger>
-          <TabsTrigger value="billing" className="data-[state=active]:bg-red-600 data-[state=active]:text-white gap-2">
-            <CreditCard className="w-4 h-4" /> Billing
-          </TabsTrigger>
-          <TabsTrigger value="company" className="data-[state=active]:bg-red-600 data-[state=active]:text-white gap-2">
-            <Building2 className="w-4 h-4" /> Company
-          </TabsTrigger>
-          <TabsTrigger value="branding" className="data-[state=active]:bg-red-600 data-[state=active]:text-white gap-2">
-            <Palette className="w-4 h-4" /> Branding
-          </TabsTrigger>
-        </TabsList>
+    <div className="min-h-full bg-gray-50 p-6 md:p-8">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">
+          Settings
+        </h1>
 
-        {/* Profile Tab */}
-        <TabsContent value="profile">
-          <Card className="border-0 shadow-sm">
-            <CardHeader>
-              <CardTitle>Profile Information</CardTitle>
-              <CardDescription>Update your personal details</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center gap-6">
-                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center">
-                  <span className="text-2xl font-bold text-gray-600">JR</span>
-                </div>
-                <div>
-                  <Button variant="outline">Change Photo</Button>
-                  <p className="text-sm text-gray-500 mt-1">JPG, PNG or GIF. Max 2MB</p>
-                </div>
+        <p className="mt-2 text-gray-600">
+          Manage your HireResQ account and application preferences.
+        </p>
+      </div>
+
+      <div className="max-w-5xl space-y-6">
+        {/* Profile */}
+        <section className="bg-white rounded-2xl border border-gray-200 shadow-sm">
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center">
+                <User className="w-5 h-5 text-red-600" />
               </div>
 
-              <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label>First Name</Label>
-                  <Input defaultValue="John" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Last Name</Label>
-                  <Input defaultValue="Recruiter" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Email</Label>
-                  <Input defaultValue="john@company.com" type="email" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Phone</Label>
-                  <Input defaultValue="+27 82 123 4567" />
-                </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Profile
+                </h2>
+
+                <p className="text-sm text-gray-500">
+                  Update your account information.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6 grid md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Full Name
+              </label>
+
+              <input
+                type="text"
+                value={settings.fullName}
+                onChange={(e) =>
+                  handleChange("fullName", e.target.value)
+                }
+                className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Email Address
+              </label>
+
+              <input
+                type="email"
+                value={settings.email}
+                onChange={(e) =>
+                  handleChange("email", e.target.value)
+                }
+                placeholder="your@email.com"
+                className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Company
+              </label>
+
+              <input
+                type="text"
+                value={settings.company}
+                onChange={(e) =>
+                  handleChange("company", e.target.value)
+                }
+                className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* Notifications */}
+        <section className="bg-white rounded-2xl border border-gray-200 shadow-sm">
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center">
+                <Bell className="w-5 h-5 text-red-600" />
               </div>
 
-              <Button 
-                onClick={handleSaveProfile}
-                disabled={saving}
-                className="bg-red-600 hover:bg-red-700 text-white"
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Notifications
+                </h2>
+
+                <p className="text-sm text-gray-500">
+                  Control how HireResQ keeps you informed.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6 space-y-5">
+            <label className="flex items-center justify-between gap-4 cursor-pointer">
+              <div>
+                <p className="font-medium text-gray-900">
+                  Application Notifications
+                </p>
+
+                <p className="text-sm text-gray-500">
+                  Receive notifications about recruitment activity.
+                </p>
+              </div>
+
+              <input
+                type="checkbox"
+                checked={settings.notifications}
+                onChange={(e) =>
+                  handleChange(
+                    "notifications",
+                    e.target.checked
+                  )
+                }
+                className="w-5 h-5 accent-red-600"
+              />
+            </label>
+
+            <label className="flex items-center justify-between gap-4 cursor-pointer">
+              <div>
+                <p className="font-medium text-gray-900">
+                  Email Notifications
+                </p>
+
+                <p className="text-sm text-gray-500">
+                  Receive important updates by email.
+                </p>
+              </div>
+
+              <input
+                type="checkbox"
+                checked={settings.emailNotifications}
+                onChange={(e) =>
+                  handleChange(
+                    "emailNotifications",
+                    e.target.checked
+                  )
+                }
+                className="w-5 h-5 accent-red-600"
+              />
+            </label>
+          </div>
+        </section>
+
+        {/* Security */}
+        <section className="bg-white rounded-2xl border border-gray-200 shadow-sm">
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center">
+                <Shield className="w-5 h-5 text-red-600" />
+              </div>
+
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Security
+                </h2>
+
+                <p className="text-sm text-gray-500">
+                  Manage account security settings.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6">
+            <button
+              type="button"
+              className="px-5 py-3 rounded-xl border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium"
+            >
+              Change Password
+            </button>
+          </div>
+        </section>
+
+        {/* Subscription */}
+        <section className="bg-white rounded-2xl border border-gray-200 shadow-sm">
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center">
+                <CreditCard className="w-5 h-5 text-red-600" />
+              </div>
+
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Subscription
+                </h2>
+
+                <p className="text-sm text-gray-500">
+                  Manage your HireResQ subscription.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-semibold text-gray-900">
+                  Pro Plan
+                </p>
+
+                <p className="text-sm text-gray-500">
+                  Your current HireResQ plan
+                </p>
+              </div>
+
+              <button
+                type="button"
+                className="px-5 py-3 rounded-xl bg-black hover:bg-gray-800 text-white font-medium"
               >
-                {saving ? 'Saving...' : <><Save className="w-4 h-4" /> Save Changes</>}
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                Manage Plan
+              </button>
+            </div>
+          </div>
+        </section>
 
-        {/* Notifications Tab */}
-        <TabsContent value="notifications">
-          <Card className="border-0 shadow-sm">
-            <CardContent className="p-8 text-center text-gray-500">
-              Notification preferences coming soon
-            </CardContent>
-          </Card>
-        </TabsContent>
+        {/* Save */}
+        <div className="flex items-center justify-end gap-4 pb-8">
+          {saved && (
+            <span className="text-sm text-green-600 font-medium">
+              Settings saved successfully.
+            </span>
+          )}
 
-        {/* Security Tab */}
-        <TabsContent value="security">
-          <Card className="border-0 shadow-sm">
-            <CardContent className="p-8 text-center text-gray-500">
-              Security settings coming soon
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Billing Tab */}
-        <TabsContent value="billing">
-          <Card className="border-0 shadow-sm">
-            <CardContent className="p-8 text-center text-gray-500">
-              Billing & subscription management coming soon
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Company Tab */}
-        <TabsContent value="company">
-          <Card className="border-0 shadow-sm">
-            <CardContent className="p-8 text-center text-gray-500">
-              Company details coming soon
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Branding Tab */}
-        <TabsContent value="branding">
-          <Card className="border-0 shadow-sm">
-            <CardContent className="p-8 text-center text-gray-500">
-              White-label branding coming soon (Advance plan)
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+          <button
+            type="button"
+            onClick={handleSave}
+            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-medium"
+          >
+            <Save className="w-5 h-5" />
+            Save Settings
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

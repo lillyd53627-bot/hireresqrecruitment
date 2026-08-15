@@ -130,3 +130,17 @@ export default function Success() {
     </div>
   );
 }
+
+
+
+
+await supabase
+  .from('users')
+  .update({
+    plan_status: 'active',
+    subscription_tier: plan, // starter | growth | advance
+    payment_status: 'paid',
+    paystack_reference: reference,
+    subscription_start: new Date(),
+  })
+  .eq('email', email);

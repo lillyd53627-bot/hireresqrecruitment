@@ -65,7 +65,7 @@ export default function AffiliateLanding() {
           Join the Affiliate Program – Start Earning Today
         </a>
 
-        <p className="mt-8 text-gray-400 text-sm">
+                <p className="mt-8 text-gray-400 text-sm">
           No upfront cost • Weekly payouts • Full marketing support provided
         </p>
       </div>

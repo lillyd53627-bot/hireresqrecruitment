@@ -1,18 +1,36 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-import path from 'path';
+// vite.config.js
+
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export default defineConfig({
   plugins: [react()],
+
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
   },
+
   server: {
-    host: true,           // Allow access from network
-    port: 5178,           // You can change this if needed
-    strictPort: false,    // Use any available port if 5178 is busy
-    https: false,         // Keep false for now to avoid frame issues
+    host: "127.0.0.1",
+    port: 5173,
+    strictPort: false,
+    https: false,
+
+    // IMPORTANT:
+    // Send /api requests from Vite to the Express backend.
+    proxy: {
+      "/api": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
 });

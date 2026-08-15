@@ -1,5 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Search, Users, UserCheck, Clock, BriefcaseBusiness, MoreHorizontal, UserPlus, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +18,15 @@ export default function Candidates() {
   const [selectedCandidate, setSelectedCandidate] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [previewCv, setPreviewCv] = useState(null);
+
+  // Per-user dashboard ownership / tracking
+  const [currentUser, setCurrentUser] = useState(null);
+  const [viewMode, setViewMode] = useState('mine');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [jobFilter, setJobFilter] = useState('ALL');
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [savingAssignment, setSavingAssignment] = useState(false);
+  const [assignmentMessage, setAssignmentMessage] = useState('');
 
   const fileInputRef = useRef(null);
 
@@ -39,42 +51,132 @@ export default function Candidates() {
     'Western Cape': ['ALL', 'Cape Town', 'Stellenbosch', 'Paarl', 'George', 'Worcester', 'Mossel Bay', 'Knysna', 'Hermanus', 'Somerset West', 'Bellville', 'Strand', 'Saldanha']
   };
 
-  // FETCH (unchanged)
+  // FETCH candidates and identify the signed-in user.
   useEffect(() => {
     const fetchData = async () => {
+      const { data: authData } = await supabase.auth.getUser();
+      setCurrentUser(authData?.user || null);
+
       const { data, error } = await supabase.from('candidates').select('*');
-      if (error) console.error("Supabase error:", error);
-      console.log(`✅ Fetched ${data?.length || 0} candidates`);
-      if (data && data.length > 0) {
-        console.log("Sample title:", data[0].title);
+      if (error) {
+        console.error("Supabase error:", error);
+        setCandidates([]);
+        setFiltered([]);
+        return;
       }
+
+      console.log(`Fetched ${data?.length || 0} candidates`);
       setCandidates(data || []);
-      setFiltered(data || []);
     };
     fetchData();
   }, []);
 
-  // SEARCH LOGIC (unchanged)
+  // Search + dashboard filters. Ownership supports common column names
+  // without requiring a database migration before the UI can be used.
+  const getOwnerId = (candidate) =>
+    candidate.user_id ||
+    candidate.assigned_user_id ||
+    candidate.owner_id ||
+    candidate.created_by ||
+    null;
+
+  const jobs = useMemo(() => {
+    const values = candidates
+      .map(c => c.job_title || c.jobTitle || c.position || c.applied_for)
+      .filter(Boolean);
+    return [...new Set(values)].sort();
+  }, [candidates]);
+
+  const myCandidates = useMemo(() => {
+    if (!currentUser?.id) return candidates;
+    const owned = candidates.filter(c => getOwnerId(c) === currentUser.id);
+    // If legacy rows have no owner, keep them visible rather than hiding data.
+    const unassigned = candidates.filter(c => !getOwnerId(c));
+    return [...owned, ...unassigned];
+  }, [candidates, currentUser]);
+
+  const baseCandidates = viewMode === 'mine' ? myCandidates : candidates;
+
   useEffect(() => {
-    if (!search.trim()) {
-      setFiltered([...candidates]);
-      return;
-    }
     const term = search.toLowerCase().trim();
-    console.log(`🔍 Searching for "${term}"`);
-    const result = candidates.filter(c => {
-      const title = (c.title || '').toLowerCase();
-      const name = (c.name || '').toLowerCase();
-      const location = (c.location || '').toLowerCase();
-      const cityField = (c.city || '').toLowerCase();
-      return title.includes(term) ||
-             name.includes(term) ||
-             location.includes(term) ||
-             cityField.includes(term);
+    const result = baseCandidates.filter(c => {
+      const haystack = [
+        c.title, c.name, c.location, c.city, c.province, c.skills,
+        c.education, c.email, c.phone, c.job_title, c.jobTitle, c.position,
+        c.applied_for
+      ].filter(Boolean).join(' ').toLowerCase();
+
+      const matchesSearch = !term || haystack.includes(term);
+      const matchesProvince = province === 'ALL' || c.province === province;
+      const matchesCity = city === 'ALL' || c.city === city || c.location === city;
+      const matchesEducation = education === 'ALL' || (c.education || '').toLowerCase().includes(education.toLowerCase());
+      const matchesGender = gender.length === 0 || gender.includes(c.gender);
+      const matchesEthnicity = ethnicity.length === 0 || ethnicity.includes(c.ethnicity);
+      const candidateAge = Number(c.age);
+      const matchesAge = !candidateAge || (candidateAge >= age[0] && candidateAge <= age[1]);
+      const candidateSalary = Number(String(c.salary || '').replace(/[^0-9.]/g, ''));
+      const matchesSalary = !candidateSalary || (candidateSalary >= salary[0] && candidateSalary <= salary[1]);
+      const matchesStatus = statusFilter === 'ALL' || (c.status || 'new') === statusFilter;
+      const candidateJob = c.job_title || c.jobTitle || c.position || c.applied_for;
+      const matchesJob = jobFilter === 'ALL' || candidateJob === jobFilter;
+
+      return matchesSearch && matchesProvince && matchesCity && matchesEducation &&
+        matchesGender && matchesEthnicity && matchesAge && matchesSalary &&
+        matchesStatus && matchesJob;
     });
-    console.log(`Search returned ${result.length} results`);
+
     setFiltered(result);
-  }, [search, candidates]);
+    setSelectedIds(prev => prev.filter(id => result.some(c => c.id === id)));
+  }, [search, baseCandidates, province, city, education, gender, ethnicity, age, salary, statusFilter, jobFilter]);
+
+  const stats = useMemo(() => ({
+    total: baseCandidates.length,
+    new: baseCandidates.filter(c => (c.status || 'new') === 'new').length,
+    screening: baseCandidates.filter(c => c.status === 'screening').length,
+    shortlisted: baseCandidates.filter(c => c.status === 'shortlisted').length,
+    interview: baseCandidates.filter(c => c.status === 'interview').length,
+    hired: baseCandidates.filter(c => c.status === 'hired').length,
+  }), [baseCandidates]);
+
+  const toggleCandidate = (id) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const assignSelectedToCurrentUser = async () => {
+    if (!currentUser?.id || selectedIds.length === 0) return;
+    setSavingAssignment(true);
+    setAssignmentMessage('');
+    const { error } = await supabase
+      .from('candidates')
+      .update({ assigned_user_id: currentUser.id })
+      .in('id', selectedIds);
+
+    if (error) {
+      console.error('Assignment error:', error);
+      setAssignmentMessage('Could not assign candidates. Add an assigned_user_id column to candidates if it does not exist.');
+    } else {
+      setCandidates(prev => prev.map(c =>
+        selectedIds.includes(c.id) ? { ...c, assigned_user_id: currentUser.id } : c
+      ));
+      setAssignmentMessage(`${selectedIds.length} candidate${selectedIds.length === 1 ? '' : 's'} assigned to you.`);
+      setSelectedIds([]);
+      setViewMode('mine');
+    }
+    setSavingAssignment(false);
+  };
+
+  const clearFilters = () => {
+    setSearch('');
+    setProvince('ALL');
+    setCity('ALL');
+    setEducation('ALL');
+    setGender([]);
+    setEthnicity([]);
+    setAge([18, 64]);
+    setSalary([0, 3000000]);
+    setStatusFilter('ALL');
+    setJobFilter('ALL');
+  };
 
   // CV UPLOAD - Your logic
   const handleCVUpload = async (e) => {
@@ -114,7 +216,9 @@ export default function Candidates() {
         ethnicity: parsed.ethnicity || "",
         age: parsed.age || null,
         salary: parsed.salary || null,
-        status: 'new'
+        status: 'new',
+        assigned_user_id: currentUser?.id || null,
+        created_by: currentUser?.id || null
       }]);
 
       if (error) {
@@ -143,17 +247,6 @@ export default function Candidates() {
     }
   };
 
-  const clearFilters = () => {
-    setSearch('');
-    setProvince('ALL');
-    setCity('ALL');
-    setEducation('ALL');
-    setGender([]);
-    setEthnicity([]);
-    setAge([18, 64]);
-    setSalary([0, 3000000]);
-  };
-
   const saveSearch = () => {
     const saved = JSON.parse(localStorage.getItem('savedSearches') || '[]');
     saved.push({ search, province, city, education });
@@ -163,7 +256,43 @@ export default function Candidates() {
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6 pl-72">
-      <div className="flex gap-3">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Candidate Dashboard</h1>
+          <p className="text-sm text-gray-500">
+            Track, filter and manage candidates assigned to each recruiter.
+          </p>
+        </div>
+        <Tabs value={viewMode} onValueChange={setViewMode}>
+          <TabsList>
+            <TabsTrigger value="mine">My Candidates</TabsTrigger>
+            <TabsTrigger value="all">All Candidates</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+        {[
+          ['total', 'Total', Users, 'bg-blue-50 text-blue-600'],
+          ['new', 'New', Clock, 'bg-gray-100 text-gray-600'],
+          ['screening', 'Screening', Search, 'bg-purple-50 text-purple-600'],
+          ['shortlisted', 'Shortlisted', UserCheck, 'bg-teal-50 text-teal-600'],
+          ['interview', 'Interview', BriefcaseBusiness, 'bg-yellow-50 text-yellow-600'],
+          ['hired', 'Hired', UserCheck, 'bg-green-50 text-green-600'],
+        ].map(([key, label, Icon, cls]) => (
+          <Card key={key} className="border-0 shadow-sm">
+            <CardContent className="p-4">
+              <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${cls}`}>
+                <Icon className="w-4 h-4" />
+              </div>
+              <p className="text-2xl font-bold mt-2">{stats[key]}</p>
+              <p className="text-xs text-gray-500">{label}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <div className="flex gap-3 flex-wrap items-center">
         <Input
           placeholder="Search by title or name (e.g. sales manager, john)"
           value={search}
@@ -173,6 +302,34 @@ export default function Candidates() {
         <Button className="bg-blue-600 hover:bg-blue-700">Search</Button>
         <Button onClick={saveSearch} className="bg-red-600 hover:bg-red-700">Save Search</Button>
         <Button onClick={clearFilters} variant="outline">Clear Filters</Button>
+
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-[170px]"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectContent>
+            {['ALL', 'new', 'screening', 'shortlisted', 'interview', 'offer', 'hired', 'rejected'].map(s =>
+              <SelectItem key={s} value={s}>{s === 'ALL' ? 'All statuses' : s}</SelectItem>
+            )}
+          </SelectContent>
+        </Select>
+
+        <Select value={jobFilter} onValueChange={setJobFilter}>
+          <SelectTrigger className="w-[210px]"><SelectValue placeholder="Job" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">All jobs</SelectItem>
+            {jobs.map(job => <SelectItem key={job} value={job}>{job}</SelectItem>)}
+          </SelectContent>
+        </Select>
+
+        {selectedIds.length > 0 && currentUser && (
+          <Button
+            disabled={savingAssignment}
+            onClick={assignSelectedToCurrentUser}
+            className="bg-red-600 hover:bg-red-700"
+          >
+            <UserPlus className="w-4 h-4 mr-2" />
+            {savingAssignment ? 'Assigning...' : `Assign ${selectedIds.length} to me`}
+          </Button>
+        )}
 
         {/* CV Upload Button - Fixed with ref */}
         <Button 
@@ -193,7 +350,7 @@ export default function Candidates() {
 
       {/* Rest of your file remains unchanged - filters, gender buttons, sliders, results, etc. */}
       <div className="grid md:grid-cols-4 gap-4">
-        <Select value={province} onValueChange={setProvince}>
+        <Select value={province} onValueChange={(value) => { setProvince(value); setCity('ALL'); }}>
           <SelectTrigger><SelectValue placeholder="Province" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="ALL">ALL</SelectItem>
@@ -244,36 +401,68 @@ export default function Candidates() {
         </div>
       </div>
 
+      {assignmentMessage && (
+        <div className="flex items-center justify-between rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700">
+          <span>{assignmentMessage}</span>
+          <Button variant="ghost" size="sm" onClick={() => setAssignmentMessage('')}>
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between text-sm text-gray-500">
+        <span>Showing <strong>{filtered.length}</strong> of {baseCandidates.length} candidates</span>
+        {currentUser && <span>Dashboard: <strong>{currentUser.email || currentUser.id}</strong></span>}
+      </div>
+
       {/* RESULTS */}
       <div className="grid gap-4">
         {Array.isArray(filtered) && filtered.length > 0 ? (
-          filtered.map((c) => (
-            <Card key={c.id}>
-              <CardContent className="flex justify-between p-6">
-                <div>
-                  <h3 className="font-bold">{c.name}</h3>
-                  <p className="text-lg">{c.title}</p>
-                  <p className="text-sm text-gray-500">
-                    {c.city || c.location || 'No location'}, {c.province || ''}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Badge>{c.status || 'new'}</Badge>
-                  <Button variant="outline" onClick={() => setSelectedCandidate(c)}>
-                    View Details
-                  </Button>
-                  {c.cv_file_path && (
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setPreviewCv(c.cv_file_path)}
-                    >
-                      Preview CV
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))
+          filtered.map((c) => {
+            const owner = getOwnerId(c);
+            const isMine = currentUser?.id && owner === currentUser.id;
+            const jobTitle = c.job_title || c.jobTitle || c.position || c.applied_for;
+            return (
+              <Card key={c.id} className="border-0 shadow-sm hover:shadow-md transition-shadow">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <Checkbox
+                      checked={selectedIds.includes(c.id)}
+                      onCheckedChange={() => toggleCandidate(c.id)}
+                      className="mt-1"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="min-w-0">
+                          <h3 className="font-bold truncate">{c.name || 'Unnamed Candidate'}</h3>
+                          <p className="text-sm text-gray-600 truncate">{c.title || 'No title'}</p>
+                        </div>
+                        <Badge>{c.status || 'new'}</Badge>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mt-3 text-xs text-gray-500">
+                        <span>{c.city || c.location || 'No location'}{c.province ? `, ${c.province}` : ''}</span>
+                        <span>{c.email || 'No email'}</span>
+                        <span>{jobTitle || 'No job linked'}</span>
+                        <span className={isMine ? 'text-green-600 font-medium' : ''}>
+                          {isMine ? 'Assigned to me' : owner ? 'Assigned to another user' : 'Unassigned'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <Button variant="outline" onClick={() => setSelectedCandidate(c)}>
+                        View
+                      </Button>
+                      {c.cv_file_path && (
+                        <Button variant="outline" onClick={() => setPreviewCv(c.cv_file_path)}>
+                          CV
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })
         ) : (
           <p className="text-center text-gray-500 py-12">
             No matches found.<br />

@@ -1,127 +1,63 @@
-// =============================================
-// score-candidates Edge Function
-// Proper AI Scoring for Candidates
-// =============================================
+const runAIScoring = async () => {
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { corsHeaders } from 'https://esm.sh/@supabase/supabase-js@2/cors'
-
-Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+  if (!jobDescription.trim()) {
+    toast.error('Please enter a job description')
+    return
   }
 
+  setMatching(true)
+
   try {
-    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY')
-    const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
-    if (!OPENAI_API_KEY) {
-      throw new Error('OpenAI API key not configured')
-    }
+    const response = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/semantic-match`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify({
+          job_description: jobDescription
+        })
+      }
+    )
 
-    let body: any = {}
-    try {
-      body = await req.json()
-    } catch {}
+    // HANDLE FAILED RESPONSE
+    if (!response.ok) {
 
-    const { job_description, candidates } = body
+      const text = await response.text()
 
-    if (!job_description || !candidates || !Array.isArray(candidates)) {
-      return new Response(
-        JSON.stringify({ error: 'job_description and candidates array are required' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      console.error('FUNCTION ERROR:', text)
+
+      throw new Error(
+        `Semantic match failed: ${response.status}`
       )
     }
 
-    // Prepare prompt for OpenAI
-    const prompt = `
-You are an expert recruiter. Score the following candidates from 0 to 100 based on how well they match this job description.
+    const result = await response.json()
 
-Job Description:
-${job_description}
+    console.log('MATCH RESULT:', result)
 
-Candidates:
-${candidates.map((c, i) => `
-${i+1}. Name: ${c.name || 'N/A'}
-   Title: ${c.title || 'N/A'}
-   Location: ${c.location || 'N/A'}
-   Skills: ${c.skills || 'N/A'}
-`).join('\n')}
-
-Return ONLY a valid JSON array of objects with this exact structure:
-[
-  {
-    "id": "candidate-id",
-    "match_score": 85
-  },
-  ...
-]
-Do not include any explanation.
-`;
-
-    const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        temperature: 0.1,
-        messages: [
-          { role: 'system', content: 'You are a precise recruitment scoring assistant.' },
-          { role: 'user', content: prompt }
-        ],
-        response_format: { type: 'json_object' }
-      })
-    });
-
-    if (!openaiRes.ok) {
-      const errText = await openaiRes.text();
-      throw new Error(`OpenAI error: ${openaiRes.status} - ${errText}`);
+    if (!result.success) {
+      throw new Error(result.error)
     }
 
-    const openaiData = await openaiRes.json();
-    const content = openaiData.choices?.[0]?.message?.content;
+    setCandidates(result.scoredCandidates || [])
 
-    let scored = [];
-    try {
-      const parsed = JSON.parse(content);
-      scored = Array.isArray(parsed) ? parsed : parsed.scores || parsed;
-    } catch (e) {
-      console.error("Failed to parse OpenAI response");
-    }
+    toast.success(
+      `Matched ${result.count || 0} candidates`
+    )
 
-    // Merge scores back with original candidates
-    const scoredCandidates = candidates.map(cand => {
-      const scoreObj = scored.find(s => s.id === cand.id);
-      return {
-        ...cand,
-        match_score: scoreObj?.match_score || Math.floor(Math.random() * 30) + 65 // fallback
-      };
-    });
+  } catch (err) {
 
-    return new Response(
-      JSON.stringify({ scoredCandidates }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200
-      }
-    );
+    console.error(err)
 
-  } catch (err: any) {
-    console.error('score-candidates error:', err.message);
+    toast.error(err.message)
 
-    return new Response(
-      JSON.stringify({ 
-        error: err.message,
-        scoredCandidates: [] 
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500
-      }
-    );
+  } finally {
+
+    setMatching(false)
   }
-});
+}
