@@ -1,44 +1,41 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
 import {
   Search,
   Plus,
   Building2,
-  Briefcase,
   Mail,
-  Globe,
+  Phone,
   MoreVertical,
-  Star,
-  DollarSign,
-  ChevronRight,
-  Target,
-  Zap,
-  MapPin,
-  Users,
-  Pencil,
+  Edit2,
   Trash2,
+  MapPin,
+  ArrowLeft,
   RefreshCw,
+  Users,
+  CheckCircle2,
+  Clock,
+  XCircle,
 } from 'lucide-react';
+
+import { supabase } from '@/lib/supabase';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+
 import {
   Card,
   CardContent,
+  CardHeader,
+  CardTitle,
 } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-} from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
@@ -47,1226 +44,1386 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from '@/components/ui/dialog';
 
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
 import Sidebar from '@/components/Dashboard/Sidebar';
 import TopBar from '@/components/Dashboard/TopBar';
 
-import { supabase } from '@/lib/supabase';
-import { toast } from 'sonner';
+const STATUS_OPTIONS = [
+  { value: 'active', label: 'Active' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'inactive', label: 'Inactive' },
+];
 
+const EMPTY_FORM = {
+  company_name: '',
+  contact_name: '',
+  email: '',
+  phone: '',
+  status: 'active',
+  notes: '',
+};
+
+const getStatusBadgeClass = (status) => {
+  switch (status) {
+    case 'active':
+      return 'bg-green-100 text-green-700 hover:bg-green-100';
+
+    case 'pending':
+      return 'bg-yellow-100 text-yellow-700 hover:bg-yellow-100';
+
+    case 'inactive':
+      return 'bg-gray-100 text-gray-700 hover:bg-gray-100';
+
+    default:
+      return 'bg-gray-100 text-gray-700 hover:bg-gray-100';
+  }
+};
+
+const formatDate = (date) => {
+  if (!date) return '—';
+
+  try {
+    return new Date(date).toLocaleDateString('en-ZA', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  } catch {
+    return '—';
+  }
+};
 
 export default function Clients() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  const [activeTab, setActiveTab] = useState('clients');
-
   const [clients, setClients] = useState([]);
-  const [leads, setLeads] = useState([]);
-  const [jobs, setJobs] = useState([]);
 
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const [error, setError] = useState('');
 
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
 
-  const [clientDialogOpen, setClientDialogOpen] = useState(false);
-  const [editingClient, setEditingClient] = useState(null);
+  const [selectedClient, setSelectedClient] = useState(null);
 
-  const [saving, setSaving] = useState(false);
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
 
-  const [formData, setFormData] = useState({
-    name: '',
-    industry: '',
-    location: '',
-    contact: '',
-    email: '',
-    phone: '',
-    website: '',
-    status: 'active',
-    notes: '',
-  });
+  const [clientToDelete, setClientToDelete] = useState(null);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
+  const [form, setForm] = useState(EMPTY_FORM);
 
-  /* =========================================================
-     LOAD REAL CRM DATA
-  ========================================================= */
+  /*
+   * ---------------------------------------------------------
+   * GET CURRENT USER
+   * ---------------------------------------------------------
+   */
 
-  const loadData = async (showRefresh = false) => {
+  const getCurrentUser = async () => {
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError) {
+      throw authError;
+    }
+
+    if (!user) {
+      throw new Error(
+        'You are not logged in. Please sign in before accessing clients.'
+      );
+    }
+
+    return user;
+  };
+
+  /*
+   * ---------------------------------------------------------
+   * LOAD CLIENTS
+   * ---------------------------------------------------------
+   */
+
+  const loadClients = async () => {
+    setLoading(true);
+    setError('');
+
     try {
-      if (showRefresh) setRefreshing(true);
-      else setLoading(true);
+      const user = await getCurrentUser();
 
-      const [
-        clientsResponse,
-        jobsResponse,
-        leadsResponse,
-      ] = await Promise.all([
-        supabase
-          .from('clients')
-          .select('*')
-          .order('created_at', { ascending: false }),
+      const { data, error: clientsError } = await supabase
+        .from('clients')
+        .select(
+          `
+            id,
+            user_id,
+            company_name,
+            contact_name,
+            email,
+            phone,
+            status,
+            notes,
+            created_at,
+            updated_at
+          `
+        )
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
 
-        supabase
-          .from('jobs')
-          .select('*')
-          .order('created_at', { ascending: false }),
-
-        supabase
-          .from('leads')
-          .select('*')
-          .order('created_at', { ascending: false }),
-      ]);
-
-      if (clientsResponse.error) {
-        console.error('Clients error:', clientsResponse.error);
-        toast.error('Unable to load clients');
+      if (clientsError) {
+        throw clientsError;
       }
 
-      if (jobsResponse.error) {
-        console.warn('Jobs table error:', jobsResponse.error);
-      }
+      setClients(data || []);
+    } catch (err) {
+      console.error('Error loading clients:', err);
 
-      if (leadsResponse.error) {
-        console.warn('Leads table error:', leadsResponse.error);
-      }
+      setError(
+        err?.message ||
+          'Unable to load clients. Please check your connection and try again.'
+      );
 
-      setClients(clientsResponse.data || []);
-      setJobs(jobsResponse.data || []);
-      setLeads(leadsResponse.data || []);
-
-    } catch (error) {
-      console.error('CRM loading error:', error);
-      toast.error('Unable to load CRM data');
+      setClients([]);
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   };
 
+  /*
+   * ---------------------------------------------------------
+   * INITIAL LOAD
+   * ---------------------------------------------------------
+   */
 
   useEffect(() => {
-    loadData();
+    loadClients();
   }, []);
 
+  /*
+   * ---------------------------------------------------------
+   * AUTH STATE
+   *
+   * If the user signs in/out while this page is open,
+   * reload the clients.
+   * ---------------------------------------------------------
+   */
 
-  /* =========================================================
-     CALCULATED CLIENT DATA
-  ========================================================= */
-
-  const getClientJobs = (client) => {
-    if (!client?.id) return [];
-
-    return jobs.filter((job) => {
-      return (
-        job.client_id === client.id ||
-        job.clientId === client.id ||
-        job.company_id === client.id
-      );
+  useEffect(() => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (
+        event === 'SIGNED_IN' ||
+        event === 'SIGNED_OUT' ||
+        event === 'TOKEN_REFRESHED'
+      ) {
+        loadClients();
+      }
     });
-  };
 
+    return () => {
+      subscription?.unsubscribe();
+    };
+  }, []);
 
-  const getActiveJobs = (client) => {
-    return getClientJobs(client).filter((job) => {
-      const status = String(job.status || '').toLowerCase();
-
-      return ![
-        'closed',
-        'filled',
-        'cancelled',
-        'cancelled',
-        'completed',
-      ].includes(status);
-    }).length;
-  };
-
-
-  const getTotalHires = (client) => {
-    return getClientJobs(client).filter((job) => {
-      const status = String(job.status || '').toLowerCase();
-
-      return [
-        'hired',
-        'filled',
-        'closed',
-        'completed',
-      ].includes(status);
-    }).length;
-  };
-
-
-  const getClientRevenue = (client) => {
-    const clientJobs = getClientJobs(client);
-
-    return clientJobs.reduce((total, job) => {
-      const value =
-        job.revenue ||
-        job.placement_fee ||
-        job.fee ||
-        job.value ||
-        0;
-
-      const numericValue = Number(
-        String(value).replace(/[^0-9.-]/g, '')
-      );
-
-      return total + (Number.isFinite(numericValue) ? numericValue : 0);
-    }, 0);
-  };
-
-
-  const formatCurrency = (value) => {
-    return `R ${Number(value || 0).toLocaleString('en-ZA')}`;
-  };
-
-
-  /* =========================================================
-     SEARCH
-  ========================================================= */
+  /*
+   * ---------------------------------------------------------
+   * FILTERED CLIENTS
+   * ---------------------------------------------------------
+   */
 
   const filteredClients = useMemo(() => {
-    const term = search.trim().toLowerCase();
-
-    if (!term) return clients;
+    const query = search.trim().toLowerCase();
 
     return clients.filter((client) => {
-      const searchable = [
-        client.name,
-        client.company_name,
-        client.industry,
-        client.location,
-        client.city,
-        client.province,
-        client.contact,
-        client.contact_name,
-        client.email,
-        client.phone,
-        client.website,
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase();
+      const matchesSearch =
+        !query ||
+        (client.company_name || '').toLowerCase().includes(query) ||
+        (client.contact_name || '').toLowerCase().includes(query) ||
+        (client.email || '').toLowerCase().includes(query) ||
+        (client.phone || '').toLowerCase().includes(query) ||
+        (client.notes || '').toLowerCase().includes(query);
 
-      return searchable.includes(term);
+      const matchesStatus =
+        statusFilter === 'all' || client.status === statusFilter;
+
+      return matchesSearch && matchesStatus;
     });
-  }, [clients, search]);
+  }, [clients, search, statusFilter]);
 
+  /*
+   * ---------------------------------------------------------
+   * STATS
+   * ---------------------------------------------------------
+   */
 
-  const filteredLeads = useMemo(() => {
-    const term = search.trim().toLowerCase();
-
-    if (!term) return leads;
-
-    return leads.filter((lead) => {
-      const searchable = [
-        lead.name,
-        lead.company_name,
-        lead.industry,
-        lead.location,
-        lead.city,
-        lead.website,
-        lead.source,
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase();
-
-      return searchable.includes(term);
-    });
-  }, [leads, search]);
-
-
-  /* =========================================================
-     DASHBOARD STATISTICS
-  ========================================================= */
-
-  const statistics = useMemo(() => {
-    const activeJobs = jobs.filter((job) => {
-      const status = String(job.status || '').toLowerCase();
-
-      return ![
-        'closed',
-        'filled',
-        'cancelled',
-        'completed',
-      ].includes(status);
-    }).length;
-
-    const revenue = jobs.reduce((total, job) => {
-      const value =
-        job.revenue ||
-        job.placement_fee ||
-        job.fee ||
-        job.value ||
-        0;
-
-      const numericValue = Number(
-        String(value).replace(/[^0-9.-]/g, '')
-      );
-
-      return total + (Number.isFinite(numericValue) ? numericValue : 0);
-    }, 0);
-
+  const stats = useMemo(() => {
     return {
-      totalClients: clients.length,
-      activeJobs,
-      newLeads: leads.length,
-      revenue,
+      total: clients.length,
+
+      active: clients.filter((client) => client.status === 'active').length,
+
+      pending: clients.filter((client) => client.status === 'pending').length,
+
+      inactive: clients.filter((client) => client.status === 'inactive')
+        .length,
     };
-  }, [clients, jobs, leads]);
+  }, [clients]);
 
+  /*
+   * ---------------------------------------------------------
+   * FORM HANDLING
+   * ---------------------------------------------------------
+   */
 
-  /* =========================================================
-     CLIENT FORM
-  ========================================================= */
-
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      industry: '',
-      location: '',
-      contact: '',
-      email: '',
-      phone: '',
-      website: '',
-      status: 'active',
-      notes: '',
-    });
-
-    setEditingClient(null);
+  const updateForm = (field, value) => {
+    setForm((previous) => ({
+      ...previous,
+      [field]: value,
+    }));
   };
 
-
-  const openAddClient = () => {
-    resetForm();
-    setClientDialogOpen(true);
+  const openAdd = () => {
+    setError('');
+    setForm(EMPTY_FORM);
+    setIsAddOpen(true);
   };
 
+  const openEdit = (client) => {
+    setError('');
 
-  const openEditClient = (client) => {
-    setEditingClient(client);
-
-    setFormData({
-      name: client.name || client.company_name || '',
-      industry: client.industry || '',
-      location: client.location || client.city || '',
-      contact: client.contact || client.contact_name || '',
+    setForm({
+      company_name: client.company_name || '',
+      contact_name: client.contact_name || '',
       email: client.email || '',
       phone: client.phone || '',
-      website: client.website || '',
       status: client.status || 'active',
       notes: client.notes || '',
     });
 
-    setClientDialogOpen(true);
+    setSelectedClient(client);
+    setIsEditOpen(true);
   };
 
+  const closeForm = () => {
+    if (saving) return;
 
-  const handleFormChange = (e) => {
-    const { name, value } = e.target;
-
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setIsAddOpen(false);
+    setIsEditOpen(false);
+    setForm(EMPTY_FORM);
   };
 
+  /*
+   * ---------------------------------------------------------
+   * ADD CLIENT
+   * ---------------------------------------------------------
+   */
 
-  /* =========================================================
-     SAVE CLIENT
-  ========================================================= */
-
-  const saveClient = async (e) => {
-    e.preventDefault();
-
-    if (!formData.name.trim()) {
-      toast.error('Please enter the client/company name');
+  const addClient = async () => {
+    if (!form.company_name.trim()) {
+      setError('Company name is required.');
       return;
     }
 
+    setSaving(true);
+    setError('');
+
     try {
-      setSaving(true);
+      const user = await getCurrentUser();
 
       const payload = {
-        name: formData.name.trim(),
-        industry: formData.industry.trim(),
-        location: formData.location.trim(),
-        contact: formData.contact.trim(),
-        email: formData.email.trim(),
-        phone: formData.phone.trim(),
-        website: formData.website.trim(),
-        status: formData.status,
-        notes: formData.notes.trim(),
+        user_id: user.id,
+        company_name: form.company_name.trim(),
+        contact_name: form.contact_name.trim() || null,
+        email: form.email.trim() || null,
+        phone: form.phone.trim() || null,
+        status: form.status || 'active',
+        notes: form.notes.trim() || null,
       };
 
-      let response;
+      const { data, error: insertError } = await supabase
+        .from('clients')
+        .insert(payload)
+        .select(
+          `
+            id,
+            user_id,
+            company_name,
+            contact_name,
+            email,
+            phone,
+            status,
+            notes,
+            created_at,
+            updated_at
+          `
+        )
+        .single();
 
-      if (editingClient?.id) {
-        response = await supabase
-          .from('clients')
-          .update(payload)
-          .eq('id', editingClient.id)
-          .select()
-          .single();
-      } else {
-        response = await supabase
-          .from('clients')
-          .insert([payload])
-          .select()
-          .single();
+      if (insertError) {
+        throw insertError;
       }
 
-      if (response.error) {
-        console.error('Save client error:', response.error);
+      setClients((previous) => [data, ...previous]);
 
-        toast.error(
-          response.error.message || 'Unable to save client'
-        );
+      setIsAddOpen(false);
+      setForm(EMPTY_FORM);
 
-        return;
-      }
+      setSelectedClient(data);
+    } catch (err) {
+      console.error('Error adding client:', err);
 
-      /*
-       * IMPORTANT:
-       * Update local state immediately AND reload from Supabase.
-       * This prevents the UI from falling back to old/demo data.
-       */
-
-      if (editingClient?.id) {
-        setClients((prev) =>
-          prev.map((client) =>
-            client.id === editingClient.id
-              ? response.data
-              : client
-          )
-        );
-
-        toast.success('Client updated successfully');
-      } else {
-        setClients((prev) => [
-          response.data,
-          ...prev,
-        ]);
-
-        toast.success('Client added successfully');
-      }
-
-      setClientDialogOpen(false);
-      resetForm();
-
-    } catch (error) {
-      console.error(error);
-      toast.error('Something went wrong while saving the client');
+      setError(
+        err?.message ||
+          'Unable to add client. Please check your Supabase permissions.'
+      );
     } finally {
       setSaving(false);
     }
   };
 
+  /*
+   * ---------------------------------------------------------
+   * UPDATE CLIENT
+   * ---------------------------------------------------------
+   */
 
-  /* =========================================================
-     DELETE CLIENT
-  ========================================================= */
+  const updateClient = async () => {
+    if (!selectedClient?.id) {
+      setError('No client selected.');
+      return;
+    }
 
-  const deleteClient = async (client) => {
-    if (!client?.id) return;
+    if (!form.company_name.trim()) {
+      setError('Company name is required.');
+      return;
+    }
 
-    const confirmed = window.confirm(
-      `Delete ${client.name || client.company_name}?`
-    );
-
-    if (!confirmed) return;
+    setSaving(true);
+    setError('');
 
     try {
-      const { error } = await supabase
-        .from('clients')
-        .delete()
-        .eq('id', client.id);
+      const user = await getCurrentUser();
 
-      if (error) {
-        console.error('Delete client error:', error);
-        toast.error('Unable to delete client');
-        return;
+      const payload = {
+        company_name: form.company_name.trim(),
+        contact_name: form.contact_name.trim() || null,
+        email: form.email.trim() || null,
+        phone: form.phone.trim() || null,
+        status: form.status || 'active',
+        notes: form.notes.trim() || null,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { data, error: updateError } = await supabase
+        .from('clients')
+        .update(payload)
+        .eq('id', selectedClient.id)
+        .eq('user_id', user.id)
+        .select(
+          `
+            id,
+            user_id,
+            company_name,
+            contact_name,
+            email,
+            phone,
+            status,
+            notes,
+            created_at,
+            updated_at
+          `
+        )
+        .single();
+
+      if (updateError) {
+        throw updateError;
       }
 
-      setClients((prev) =>
-        prev.filter((item) => item.id !== client.id)
+      setClients((previous) =>
+        previous.map((client) =>
+          client.id === data.id ? data : client
+        )
       );
 
-      toast.success('Client deleted');
+      setSelectedClient(data);
 
-    } catch (error) {
-      console.error(error);
-      toast.error('Unable to delete client');
+      setIsEditOpen(false);
+      setForm(EMPTY_FORM);
+    } catch (err) {
+      console.error('Error updating client:', err);
+
+      setError(
+        err?.message ||
+          'Unable to update client. Please check your Supabase permissions.'
+      );
+    } finally {
+      setSaving(false);
     }
   };
 
+  /*
+   * ---------------------------------------------------------
+   * DELETE CLIENT
+   * ---------------------------------------------------------
+   */
 
-  /* =========================================================
-     CLIENT CARD
-  ========================================================= */
-
-  const ClientCard = ({ client, index }) => {
-    const name =
-      client.name ||
-      client.company_name ||
-      'Unnamed Client';
-
-    const industry =
-      client.industry ||
-      'Industry not specified';
-
-    const location =
-      client.location ||
-      client.city ||
-      'Location not specified';
-
-    const contact =
-      client.contact ||
-      client.contact_name ||
-      '';
-
-    const activeJobs = getActiveJobs(client);
-    const totalHires = getTotalHires(client);
-    const revenue = getClientRevenue(client);
-
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: index * 0.03 }}
-      >
-        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow">
-          <CardContent className="p-4">
-            <div className="flex items-start gap-4">
-
-              {/* COMPANY ICON */}
-
-              <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                <Building2 className="w-6 h-6 text-gray-400" />
-              </div>
-
-
-              {/* MAIN CLIENT INFORMATION */}
-
-              <div className="flex-1 min-w-0">
-
-                <div className="flex items-start justify-between gap-3">
-
-                  <div className="min-w-0">
-
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-lg font-bold truncate">
-                        {name}
-                      </h3>
-
-                      <Badge
-                        className={
-                          client.status === 'active'
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-yellow-100 text-yellow-700'
-                        }
-                      >
-                        {client.status || 'active'}
-                      </Badge>
-                    </div>
-
-                    <p className="text-sm text-gray-500 mt-0.5">
-                      {industry}
-                    </p>
-
-                    <div className="flex items-center gap-4 mt-2 text-xs text-gray-500 flex-wrap">
-
-                      <span className="flex items-center gap-1">
-                        <MapPin className="w-3.5 h-3.5" />
-                        {location}
-                      </span>
-
-                      {client.email && (
-                        <span className="flex items-center gap-1">
-                          <Mail className="w-3.5 h-3.5" />
-                          {client.email}
-                        </span>
-                      )}
-
-                      {client.website && (
-                        <span className="flex items-center gap-1">
-                          <Globe className="w-3.5 h-3.5" />
-                          {client.website}
-                        </span>
-                      )}
-
-                    </div>
-
-                    {contact && (
-                      <p className="text-xs text-gray-400 mt-1">
-                        Contact: {contact}
-                      </p>
-                    )}
-
-                  </div>
-
-
-                  {/* ACTIONS */}
-
-                  <div className="flex items-center gap-2 flex-shrink-0">
-
-                    <Button
-                      size="sm"
-                      className="bg-red-600 hover:bg-red-700 text-white gap-1"
-                      onClick={() => openEditClient(client)}
-                    >
-                      View
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                        >
-                          <MoreVertical className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-
-                      <DropdownMenuContent align="end">
-
-                        <DropdownMenuItem
-                          onClick={() => openEditClient(client)}
-                        >
-                          <Pencil className="w-4 h-4 mr-2" />
-                          Edit Client
-                        </DropdownMenuItem>
-
-                        <DropdownMenuItem>
-                          <Briefcase className="w-4 h-4 mr-2" />
-                          Add Job
-                        </DropdownMenuItem>
-
-                        {client.email && (
-                          <DropdownMenuItem
-                            onClick={() =>
-                              window.location.href =
-                                `mailto:${client.email}`
-                            }
-                          >
-                            <Mail className="w-4 h-4 mr-2" />
-                            Send Email
-                          </DropdownMenuItem>
-                        )}
-
-                        <DropdownMenuItem
-                          className="text-red-600"
-                          onClick={() => deleteClient(client)}
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-
-                  </div>
-
-                </div>
-
-
-                {/* CLIENT METRICS */}
-
-                <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2">
-
-                  <div className="bg-gray-50 rounded-lg p-2.5 text-center">
-                    <p className="text-lg font-bold text-blue-600">
-                      {activeJobs}
-                    </p>
-                    <p className="text-[11px] text-gray-500">
-                      Active Jobs
-                    </p>
-                  </div>
-
-                  <div className="bg-gray-50 rounded-lg p-2.5 text-center">
-                    <p className="text-lg font-bold text-green-600">
-                      {totalHires}
-                    </p>
-                    <p className="text-[11px] text-gray-500">
-                      Total Hires
-                    </p>
-                  </div>
-
-                  <div className="bg-gray-50 rounded-lg p-2.5 text-center">
-                    <p className="text-lg font-bold text-red-600">
-                      {formatCurrency(revenue)}
-                    </p>
-                    <p className="text-[11px] text-gray-500">
-                      Revenue
-                    </p>
-                  </div>
-
-                  <div className="bg-gray-50 rounded-lg p-2.5 text-center">
-                    <p className="text-sm font-medium text-gray-600">
-                      {client.last_contact || '—'}
-                    </p>
-                    <p className="text-[11px] text-gray-500">
-                      Last Contact
-                    </p>
-                  </div>
-
-                </div>
-
-              </div>
-
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-    );
+  const confirmDelete = (client) => {
+    setClientToDelete(client);
+    setIsDeleteOpen(true);
   };
 
+  const deleteClient = async () => {
+    if (!clientToDelete?.id) return;
 
-  /* =========================================================
-     RETURN
-  ========================================================= */
+    setDeleting(true);
+    setError('');
+
+    try {
+      const user = await getCurrentUser();
+
+      const { error: deleteError } = await supabase
+        .from('clients')
+        .delete()
+        .eq('id', clientToDelete.id)
+        .eq('user_id', user.id);
+
+      if (deleteError) {
+        throw deleteError;
+      }
+
+      setClients((previous) =>
+        previous.filter((client) => client.id !== clientToDelete.id)
+      );
+
+      if (selectedClient?.id === clientToDelete.id) {
+        setSelectedClient(null);
+      }
+
+      setClientToDelete(null);
+      setIsDeleteOpen(false);
+    } catch (err) {
+      console.error('Error deleting client:', err);
+
+      setError(
+        err?.message ||
+          'Unable to delete client. Please check your Supabase permissions.'
+      );
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  /*
+   * ---------------------------------------------------------
+   * CLIENT DETAIL
+   * ---------------------------------------------------------
+   */
+
+  const openClient = (client) => {
+    setError('');
+    setSelectedClient(client);
+  };
+
+  const closeClient = () => {
+    setSelectedClient(null);
+  };
+
+  /*
+   * ---------------------------------------------------------
+   * RENDER
+   * ---------------------------------------------------------
+   */
 
   return (
     <div className="min-h-screen bg-gray-50">
-
       <Sidebar
         isCollapsed={sidebarCollapsed}
-        onToggle={() =>
-          setSidebarCollapsed(!sidebarCollapsed)
-        }
+        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
 
-
-      {/* IMPORTANT:
-          Keep the main content aligned with the shared Sidebar.
-          Do not add another margin/padding wrapper.
-      */}
-
       <main
-        className={`
-          min-h-screen
-          transition-all
-          duration-300
-          ${sidebarCollapsed ? 'ml-20' : 'ml-64'}
-        `}
+        className={`transition-all duration-300 ${
+          sidebarCollapsed ? 'ml-20' : 'ml-64'
+        }`}
       >
-
         <TopBar
           title="Client Management"
-          subtitle="Manage clients and discover new leads"
+          subtitle="Manage your recruitment clients"
         />
 
+        <div className="p-8">
+          {/* ERROR */}
+          {error && (
+            <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-start justify-between gap-4">
+              <div>
+                <strong className="font-semibold">Error: </strong>
+                {error}
+              </div>
 
-        {/* COMPACT CONTENT AREA */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setError('')}
+                className="text-red-700"
+              >
+                Dismiss
+              </Button>
+            </div>
+          )}
 
-        <div className="px-6 py-5">
+          {/* =====================================================
+              DETAIL VIEW
+          ====================================================== */}
 
-          {/* =================================================
-              STATS
-          ================================================= */}
-
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-3 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
-                  <Building2 className="w-5 h-5" />
-                </div>
-
-                <div>
-                  <p className="text-xl font-bold">
-                    {statistics.totalClients}
-                  </p>
-
-                  <p className="text-xs text-gray-500">
-                    Total Clients
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-3 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-green-50 text-green-600 flex items-center justify-center">
-                  <Briefcase className="w-5 h-5" />
-                </div>
-
-                <div>
-                  <p className="text-xl font-bold">
-                    {statistics.activeJobs}
-                  </p>
-
-                  <p className="text-xs text-gray-500">
-                    Active Jobs
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-3 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
-                  <Target className="w-5 h-5" />
-                </div>
-
-                <div>
-                  <p className="text-xl font-bold">
-                    {statistics.newLeads}
-                  </p>
-
-                  <p className="text-xs text-gray-500">
-                    New Leads
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-3 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-red-50 text-red-600 flex items-center justify-center">
-                  <DollarSign className="w-5 h-5" />
-                </div>
-
-                <div>
-                  <p className="text-xl font-bold">
-                    {formatCurrency(statistics.revenue)}
-                  </p>
-
-                  <p className="text-xs text-gray-500">
-                    Revenue
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-          </div>
-
-
-          {/* =================================================
-              TABS + SEARCH
-          ================================================= */}
-
-          <Tabs
-            value={activeTab}
-            onValueChange={setActiveTab}
-          >
-
-            <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
-
-              <TabsList className="bg-white border">
-
-                <TabsTrigger
-                  value="clients"
-                  className="data-[state=active]:bg-red-600 data-[state=active]:text-white"
-                >
-                  <Building2 className="w-4 h-4 mr-2" />
-                  Clients
-                </TabsTrigger>
-
-                <TabsTrigger
-                  value="leads"
-                  className="data-[state=active]:bg-red-600 data-[state=active]:text-white"
-                >
-                  <Target className="w-4 h-4 mr-2" />
-                  AI Leads
-                </TabsTrigger>
-
-              </TabsList>
-
-
-              <div className="flex items-center gap-2">
-
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-
-                  <Input
-                    value={search}
-                    onChange={(e) =>
-                      setSearch(e.target.value)
-                    }
-                    placeholder="Search clients..."
-                    className="pl-9 w-64 bg-white"
-                  />
-                </div>
-
-
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => loadData(true)}
-                  disabled={refreshing}
-                >
-                  <RefreshCw
-                    className={`w-4 h-4 ${
-                      refreshing
-                        ? 'animate-spin'
-                        : ''
-                    }`}
-                  />
-                </Button>
-
-
-                {activeTab === 'clients' && (
+          {selectedClient ? (
+            <div className="space-y-6">
+              {/* HEADER */}
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div className="flex items-center gap-4">
                   <Button
-                    onClick={openAddClient}
-                    className="bg-red-600 hover:bg-red-700 text-white"
+                    variant="outline"
+                    size="sm"
+                    onClick={closeClient}
+                  >
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    Back to Clients
+                  </Button>
+
+                  <div>
+                    <div className="flex items-center gap-3">
+                      <h2 className="text-2xl font-bold text-gray-900">
+                        {selectedClient.company_name}
+                      </h2>
+
+                      <Badge
+                        className={getStatusBadgeClass(
+                          selectedClient.status
+                        )}
+                      >
+                        {selectedClient.status || 'active'}
+                      </Badge>
+                    </div>
+
+                    <p className="text-sm text-gray-500 mt-1">
+                      Client since {formatDate(selectedClient.created_at)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => openEdit(selectedClient)}
+                  >
+                    <Edit2 className="w-4 h-4 mr-2" />
+                    Edit
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    className="text-red-600 hover:text-red-700"
+                    onClick={() => confirmDelete(selectedClient)}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete
+                  </Button>
+                </div>
+              </div>
+
+              {/* COMPANY DETAILS */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <Card className="border-0 shadow-sm lg:col-span-2">
+                  <CardHeader>
+                    <CardTitle>Company Details</CardTitle>
+                  </CardHeader>
+
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <p className="text-sm text-gray-500">
+                          Company Name
+                        </p>
+
+                        <p className="font-medium text-gray-900 mt-1 flex items-center gap-2">
+                          <Building2 className="w-4 h-4 text-gray-400" />
+                          {selectedClient.company_name || '—'}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-sm text-gray-500">
+                          Contact Person
+                        </p>
+
+                        <p className="font-medium text-gray-900 mt-1">
+                          {selectedClient.contact_name || '—'}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-sm text-gray-500">
+                          Email
+                        </p>
+
+                        {selectedClient.email ? (
+                          <a
+                            href={`mailto:${selectedClient.email}`}
+                            className="font-medium text-red-600 hover:underline mt-1 flex items-center gap-2"
+                          >
+                            <Mail className="w-4 h-4" />
+                            {selectedClient.email}
+                          </a>
+                        ) : (
+                          <p className="font-medium mt-1">—</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <p className="text-sm text-gray-500">
+                          Phone
+                        </p>
+
+                        {selectedClient.phone ? (
+                          <a
+                            href={`tel:${selectedClient.phone}`}
+                            className="font-medium text-red-600 hover:underline mt-1 flex items-center gap-2"
+                          >
+                            <Phone className="w-4 h-4" />
+                            {selectedClient.phone}
+                          </a>
+                        ) : (
+                          <p className="font-medium mt-1">—</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <p className="text-sm text-gray-500">
+                          Status
+                        </p>
+
+                        <div className="mt-2">
+                          <Badge
+                            className={getStatusBadgeClass(
+                              selectedClient.status
+                            )}
+                          >
+                            {selectedClient.status || 'active'}
+                          </Badge>
+                        </div>
+                      </div>
+
+                      <div>
+                        <p className="text-sm text-gray-500">
+                          Last Updated
+                        </p>
+
+                        <p className="font-medium text-gray-900 mt-1">
+                          {formatDate(selectedClient.updated_at)}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* STATUS CARD */}
+                <Card className="border-0 shadow-sm">
+                  <CardHeader>
+                    <CardTitle>Client Status</CardTitle>
+                  </CardHeader>
+
+                  <CardContent>
+                    <div className="flex flex-col items-center justify-center py-6">
+                      {selectedClient.status === 'active' && (
+                        <CheckCircle2 className="w-16 h-16 text-green-500 mb-4" />
+                      )}
+
+                      {selectedClient.status === 'pending' && (
+                        <Clock className="w-16 h-16 text-yellow-500 mb-4" />
+                      )}
+
+                      {selectedClient.status === 'inactive' && (
+                        <XCircle className="w-16 h-16 text-gray-400 mb-4" />
+                      )}
+
+                      <p className="text-xl font-bold capitalize">
+                        {selectedClient.status || 'active'}
+                      </p>
+
+                      <p className="text-sm text-gray-500 text-center mt-2">
+                        Current client status
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* NOTES */}
+              <Card className="border-0 shadow-sm">
+                <CardHeader>
+                  <CardTitle>Notes</CardTitle>
+                </CardHeader>
+
+                <CardContent>
+                  {selectedClient.notes ? (
+                    <div className="bg-gray-50 rounded-lg p-5 whitespace-pre-wrap text-sm text-gray-700">
+                      {selectedClient.notes}
+                    </div>
+                  ) : (
+                    <p className="text-gray-400 text-sm">
+                      No notes have been added for this client.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* RECORD INFORMATION */}
+              <Card className="border-0 shadow-sm">
+                <CardHeader>
+                  <CardTitle>Record Information</CardTitle>
+                </CardHeader>
+
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
+                    <div>
+                      <p className="text-gray-500">Client ID</p>
+                      <p className="font-mono text-xs mt-1 break-all">
+                        {selectedClient.id}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-gray-500">Created</p>
+                      <p className="font-medium mt-1">
+                        {formatDate(selectedClient.created_at)}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-gray-500">Updated</p>
+                      <p className="font-medium mt-1">
+                        {formatDate(selectedClient.updated_at)}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          ) : (
+            <>
+              {/* =================================================
+                  PAGE HEADER
+              ================================================== */}
+
+              <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">
+                    Clients
+                  </h1>
+
+                  <p className="text-gray-500 mt-1">
+                    Your clients stored in Supabase
+                  </p>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={loadClients}
+                    disabled={loading}
+                  >
+                    <RefreshCw
+                      className={`w-4 h-4 mr-2 ${
+                        loading ? 'animate-spin' : ''
+                      }`}
+                    />
+                    Refresh
+                  </Button>
+
+                  <Button
+                    className="bg-red-600 hover:bg-red-700"
+                    onClick={openAdd}
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     Add Client
                   </Button>
-                )}
-
+                </div>
               </div>
 
-            </div>
+              {/* =================================================
+                  STATS
+              ================================================== */}
 
-
-            {/* =================================================
-                CLIENTS
-            ================================================= */}
-
-            <TabsContent
-              value="clients"
-              className="mt-0 space-y-3"
-            >
-
-              {loading ? (
-
-                <div className="text-center py-12 text-gray-500">
-                  Loading clients...
-                </div>
-
-              ) : filteredClients.length === 0 ? (
-
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                 <Card className="border-0 shadow-sm">
-                  <CardContent className="py-12 text-center">
+                  <CardContent className="p-5 flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                      <Building2 className="w-6 h-6" />
+                    </div>
 
-                    <Building2 className="w-10 h-10 mx-auto text-gray-300 mb-3" />
+                    <div>
+                      <p className="text-2xl font-bold">
+                        {stats.total}
+                      </p>
 
-                    <h3 className="font-semibold text-gray-700">
-                      No clients found
-                    </h3>
-
-                    <p className="text-sm text-gray-500 mt-1 mb-4">
-                      Your CRM clients will appear here.
-                    </p>
-
-                    <Button
-                      onClick={openAddClient}
-                      className="bg-red-600 hover:bg-red-700"
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Your First Client
-                    </Button>
-
+                      <p className="text-sm text-gray-500">
+                        Total Clients
+                      </p>
+                    </div>
                   </CardContent>
                 </Card>
 
-              ) : (
+                <Card className="border-0 shadow-sm">
+                  <CardContent className="p-5 flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-green-50 text-green-600 flex items-center justify-center">
+                      <CheckCircle2 className="w-6 h-6" />
+                    </div>
 
-                filteredClients.map((client, index) => (
-                  <ClientCard
-                    key={client.id}
-                    client={client}
-                    index={index}
-                  />
-                ))
+                    <div>
+                      <p className="text-2xl font-bold">
+                        {stats.active}
+                      </p>
 
+                      <p className="text-sm text-gray-500">
+                        Active
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-0 shadow-sm">
+                  <CardContent className="p-5 flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-yellow-50 text-yellow-600 flex items-center justify-center">
+                      <Clock className="w-6 h-6" />
+                    </div>
+
+                    <div>
+                      <p className="text-2xl font-bold">
+                        {stats.pending}
+                      </p>
+
+                      <p className="text-sm text-gray-500">
+                        Pending
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-0 shadow-sm">
+                  <CardContent className="p-5 flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-gray-100 text-gray-600 flex items-center justify-center">
+                      <Users className="w-6 h-6" />
+                    </div>
+
+                    <div>
+                      <p className="text-2xl font-bold">
+                        {stats.inactive}
+                      </p>
+
+                      <p className="text-sm text-gray-500">
+                        Inactive
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* =================================================
+                  SEARCH / FILTER
+              ================================================== */}
+
+              <Card className="border-0 shadow-sm mb-6">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <div className="relative flex-1 min-w-[250px]">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+
+                      <Input
+                        placeholder="Search company, contact, email or phone..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="pl-10 bg-white"
+                      />
+                    </div>
+
+                    <Select
+                      value={statusFilter}
+                      onValueChange={setStatusFilter}
+                    >
+                      <SelectTrigger className="w-40 bg-white">
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+
+                      <SelectContent>
+                        <SelectItem value="all">
+                          All Statuses
+                        </SelectItem>
+
+                        {STATUS_OPTIONS.map((status) => (
+                          <SelectItem
+                            key={status.value}
+                            value={status.value}
+                          >
+                            {status.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* =================================================
+                  LOADING
+              ================================================== */}
+
+              {loading && (
+                <Card className="border-0 shadow-sm">
+                  <CardContent className="p-12 text-center">
+                    <RefreshCw className="w-8 h-8 text-red-600 animate-spin mx-auto mb-4" />
+
+                    <p className="font-medium text-gray-700">
+                      Loading clients...
+                    </p>
+
+                    <p className="text-sm text-gray-400 mt-1">
+                      Fetching your clients from Supabase
+                    </p>
+                  </CardContent>
+                </Card>
               )}
 
-            </TabsContent>
+              {/* =================================================
+                  EMPTY STATE
+              ================================================== */}
 
-
-            {/* =================================================
-                REAL LEADS
-            ================================================= */}
-
-            <TabsContent
-              value="leads"
-              className="mt-0 space-y-3"
-            >
-
-              {filteredLeads.length === 0 ? (
-
+              {!loading && filteredClients.length === 0 && (
                 <Card className="border-0 shadow-sm">
-                  <CardContent className="py-12 text-center">
+                  <CardContent className="p-12 text-center">
+                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-5">
+                      <Building2 className="w-8 h-8 text-gray-400" />
+                    </div>
 
-                    <Target className="w-10 h-10 mx-auto text-gray-300 mb-3" />
+                    {clients.length === 0 ? (
+                      <>
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          No clients yet
+                        </h3>
 
-                    <h3 className="font-semibold">
-                      No leads found
-                    </h3>
+                        <p className="text-sm text-gray-500 mt-2 mb-6">
+                          Your real Supabase client records will appear
+                          here once you add them.
+                        </p>
 
-                    <p className="text-sm text-gray-500 mt-1">
-                      AI-discovered leads will appear here.
-                    </p>
+                        <Button
+                          className="bg-red-600 hover:bg-red-700"
+                          onClick={openAdd}
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Add Your First Client
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          No matching clients
+                        </h3>
 
+                        <p className="text-sm text-gray-500 mt-2">
+                          Try changing your search or status filter.
+                        </p>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
+              )}
 
-              ) : (
+              {/* =================================================
+                  CLIENT LIST
+              ================================================== */}
 
-                filteredLeads.map((lead, index) => (
-
-                  <motion.div
-                    key={lead.id || index}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                  >
-
-                    <Card className="border-0 shadow-sm">
-                      <CardContent className="p-4">
-
-                        <div className="flex items-center gap-4">
-
-                          <div className="w-11 h-11 bg-red-50 rounded-lg flex items-center justify-center">
-                            <Target className="w-5 h-5 text-red-600" />
+              {!loading && filteredClients.length > 0 && (
+                <div className="space-y-4">
+                  {filteredClients.map((client) => (
+                    <Card
+                      key={client.id}
+                      className="border-0 shadow-sm hover:shadow-md transition-shadow"
+                    >
+                      <CardContent className="p-6">
+                        <div className="flex items-start gap-5">
+                          {/* ICON */}
+                          <div className="w-14 h-14 bg-red-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                            <Building2 className="w-7 h-7 text-red-600" />
                           </div>
 
-                          <div className="flex-1">
+                          {/* CONTENT */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-4">
+                              <div>
+                                <div className="flex items-center gap-3 flex-wrap">
+                                  <h3 className="text-xl font-bold text-gray-900">
+                                    {client.company_name}
+                                  </h3>
 
-                            <div className="flex items-center gap-2 flex-wrap">
+                                  <Badge
+                                    className={getStatusBadgeClass(
+                                      client.status
+                                    )}
+                                  >
+                                    {client.status || 'active'}
+                                  </Badge>
+                                </div>
 
-                              <h3 className="font-bold">
-                                {lead.name ||
-                                  lead.company_name ||
-                                  'Unnamed Lead'}
-                              </h3>
-
-                              {lead.hiring_signal && (
-                                <Badge className="bg-green-100 text-green-700">
-                                  {lead.hiring_signal} Intent
-                                </Badge>
-                              )}
-
-                            </div>
-
-                            <div className="flex gap-4 text-xs text-gray-500 mt-1 flex-wrap">
-
-                              {lead.industry && (
-                                <span>
-                                  {lead.industry}
-                                </span>
-                              )}
-
-                              {(lead.location ||
-                                lead.city) && (
-                                <span className="flex items-center gap-1">
-                                  <MapPin className="w-3.5 h-3.5" />
-                                  {lead.location ||
-                                    lead.city}
-                                </span>
-                              )}
-
-                              {lead.open_roles && (
-                                <span className="flex items-center gap-1">
-                                  <Briefcase className="w-3.5 h-3.5" />
-                                  {lead.open_roles} open roles
-                                </span>
-                              )}
-
-                            </div>
-
-                          </div>
-
-
-                          {lead.score && (
-                            <div className="text-right">
-
-                              <div className="flex items-center gap-1 font-bold text-red-600">
-                                <Star className="w-4 h-4" />
-                                {lead.score}%
+                                {client.contact_name && (
+                                  <p className="text-gray-500 mt-1">
+                                    {client.contact_name}
+                                  </p>
+                                )}
                               </div>
+                            </div>
 
-                              <p className="text-[10px] text-gray-500">
-                                Lead Score
+                            {/* CONTACT DETAILS */}
+                            <div className="flex items-center gap-5 mt-4 flex-wrap text-sm text-gray-500">
+                              {client.email && (
+                                <a
+                                  href={`mailto:${client.email}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="flex items-center gap-1.5 hover:text-red-600"
+                                >
+                                  <Mail className="w-4 h-4" />
+                                  {client.email}
+                                </a>
+                              )}
+
+                              {client.phone && (
+                                <a
+                                  href={`tel:${client.phone}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="flex items-center gap-1.5 hover:text-red-600"
+                                >
+                                  <Phone className="w-4 h-4" />
+                                  {client.phone}
+                                </a>
+                              )}
+
+                              <span className="flex items-center gap-1.5">
+                                <MapPin className="w-4 h-4" />
+                                Client record
+                              </span>
+                            </div>
+
+                            {/* NOTES */}
+                            {client.notes && (
+                              <div className="mt-4 bg-gray-50 rounded-lg p-3">
+                                <p className="text-sm text-gray-600 line-clamp-2">
+                                  {client.notes}
+                                </p>
+                              </div>
+                            )}
+
+                            {/* FOOTER */}
+                            <div className="flex items-center justify-between mt-5 pt-4 border-t border-gray-100">
+                              <p className="text-xs text-gray-400">
+                                Created{' '}
+                                {formatDate(client.created_at)}
                               </p>
 
+                              <div
+                                className="flex items-center gap-2"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Button
+                                  size="sm"
+                                  className="bg-red-600 hover:bg-red-700"
+                                  onClick={() => openClient(client)}
+                                >
+                                  View Client
+                                </Button>
+
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                    >
+                                      <MoreVertical className="w-4 h-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        openClient(client)
+                                      }
+                                    >
+                                      View Details
+                                    </DropdownMenuItem>
+
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        openEdit(client)
+                                      }
+                                    >
+                                      <Edit2 className="w-4 h-4 mr-2" />
+                                      Edit Client
+                                    </DropdownMenuItem>
+
+                                    <DropdownMenuSeparator />
+
+                                    <DropdownMenuItem
+                                      className="text-red-600"
+                                      onClick={() =>
+                                        confirmDelete(client)
+                                      }
+                                    >
+                                      <Trash2 className="w-4 h-4 mr-2" />
+                                      Delete Client
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
                             </div>
-                          )}
-
+                          </div>
                         </div>
-
                       </CardContent>
                     </Card>
-
-                  </motion.div>
-
-                ))
-
+                  ))}
+                </div>
               )}
-
-            </TabsContent>
-
-          </Tabs>
-
+            </>
+          )}
         </div>
-
       </main>
 
-
-      {/* =====================================================
+      {/* =========================================================
           ADD / EDIT CLIENT DIALOG
-      ===================================================== */}
+      ========================================================== */}
 
       <Dialog
-        open={clientDialogOpen}
-        onOpenChange={setClientDialogOpen}
+        open={isAddOpen || isEditOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeForm();
+          }
+        }}
       >
-
-        <DialogContent className="sm:max-w-lg">
-
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>
-              {editingClient
-                ? 'Edit Client'
-                : 'Add Client'}
+              {isEditOpen ? 'Edit Client' : 'Add New Client'}
             </DialogTitle>
           </DialogHeader>
 
+          <div className="grid gap-5 py-4">
+            {/* COMPANY */}
+            <div className="grid gap-2">
+              <Label htmlFor="company_name">
+                Company Name *
+              </Label>
 
-          <form
-            onSubmit={saveClient}
-            className="space-y-4"
-          >
-
-            <div>
-              <Label>Company Name *</Label>
               <Input
-                name="name"
-                value={formData.name}
-                onChange={handleFormChange}
-                placeholder="Company name"
-                required
-              />
-            </div>
-
-
-            <div className="grid grid-cols-2 gap-3">
-
-              <div>
-                <Label>Industry</Label>
-                <Input
-                  name="industry"
-                  value={formData.industry}
-                  onChange={handleFormChange}
-                  placeholder="Technology"
-                />
-              </div>
-
-              <div>
-                <Label>Location</Label>
-                <Input
-                  name="location"
-                  value={formData.location}
-                  onChange={handleFormChange}
-                  placeholder="Johannesburg"
-                />
-              </div>
-
-            </div>
-
-
-            <div>
-              <Label>Contact Person</Label>
-              <Input
-                name="contact"
-                value={formData.contact}
-                onChange={handleFormChange}
-                placeholder="Contact name"
-              />
-            </div>
-
-
-            <div className="grid grid-cols-2 gap-3">
-
-              <div>
-                <Label>Email</Label>
-                <Input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleFormChange}
-                  placeholder="contact@company.co.za"
-                />
-              </div>
-
-              <div>
-                <Label>Phone</Label>
-                <Input
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleFormChange}
-                  placeholder="+27..."
-                />
-              </div>
-
-            </div>
-
-
-            <div>
-              <Label>Website</Label>
-              <Input
-                name="website"
-                value={formData.website}
-                onChange={handleFormChange}
-                placeholder="company.co.za"
-              />
-            </div>
-
-
-            <div>
-              <Label>Notes</Label>
-              <Textarea
-                name="notes"
-                value={formData.notes}
-                onChange={handleFormChange}
-                placeholder="Client notes..."
-                rows={3}
-              />
-            </div>
-
-
-            <div className="flex justify-end gap-2 pt-2">
-
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() =>
-                  setClientDialogOpen(false)
+                id="company_name"
+                placeholder="e.g. ABC Holdings"
+                value={form.company_name}
+                onChange={(e) =>
+                  updateForm('company_name', e.target.value)
                 }
-              >
-                Cancel
-              </Button>
-
-              <Button
-                type="submit"
                 disabled={saving}
-                className="bg-red-600 hover:bg-red-700"
-              >
-                {saving
-                  ? 'Saving...'
-                  : editingClient
-                    ? 'Update Client'
-                    : 'Save Client'}
-              </Button>
-
+              />
             </div>
 
-          </form>
+            {/* CONTACT */}
+            <div className="grid gap-2">
+              <Label htmlFor="contact_name">
+                Contact Name
+              </Label>
 
+              <Input
+                id="contact_name"
+                placeholder="e.g. John Smith"
+                value={form.contact_name}
+                onChange={(e) =>
+                  updateForm('contact_name', e.target.value)
+                }
+                disabled={saving}
+              />
+            </div>
+
+            {/* EMAIL / PHONE */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="email">Email</Label>
+
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="contact@company.co.za"
+                  value={form.email}
+                  onChange={(e) =>
+                    updateForm('email', e.target.value)
+                  }
+                  disabled={saving}
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="phone">Phone</Label>
+
+                <Input
+                  id="phone"
+                  placeholder="+27 82 123 4567"
+                  value={form.phone}
+                  onChange={(e) =>
+                    updateForm('phone', e.target.value)
+                  }
+                  disabled={saving}
+                />
+              </div>
+            </div>
+
+            {/* STATUS */}
+            <div className="grid gap-2">
+              <Label>Status</Label>
+
+              <Select
+                value={form.status}
+                onValueChange={(value) =>
+                  updateForm('status', value)
+                }
+                disabled={saving}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+
+                <SelectContent>
+                  {STATUS_OPTIONS.map((status) => (
+                    <SelectItem
+                      key={status.value}
+                      value={status.value}
+                    >
+                      {status.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* NOTES */}
+            <div className="grid gap-2">
+              <Label htmlFor="notes">Notes</Label>
+
+              <Textarea
+                id="notes"
+                placeholder="Add notes about this client..."
+                value={form.notes}
+                onChange={(e) =>
+                  updateForm('notes', e.target.value)
+                }
+                className="min-h-[110px]"
+                disabled={saving}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={closeForm}
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              className="bg-red-600 hover:bg-red-700"
+              onClick={isEditOpen ? updateClient : addClient}
+              disabled={saving}
+            >
+              {saving && (
+                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+              )}
+
+              {isEditOpen ? 'Save Changes' : 'Add Client'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
-
       </Dialog>
 
+      {/* =========================================================
+          DELETE CONFIRMATION
+      ========================================================== */}
+
+      <Dialog
+        open={isDeleteOpen}
+        onOpenChange={(open) => {
+          if (!deleting) {
+            setIsDeleteOpen(open);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Client</DialogTitle>
+          </DialogHeader>
+
+          <div className="py-4">
+            <p className="text-sm text-gray-600">
+              Are you sure you want to delete{' '}
+              <strong className="text-gray-900">
+                {clientToDelete?.company_name}
+              </strong>
+              ?
+            </p>
+
+            <p className="text-sm text-red-600 mt-2">
+              This will permanently remove the client record from
+              Supabase.
+            </p>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteOpen(false)}
+              disabled={deleting}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              className="bg-red-600 hover:bg-red-700"
+              onClick={deleteClient}
+              disabled={deleting}
+            >
+              {deleting && (
+                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+              )}
+
+              <Trash2 className="w-4 h-4 mr-2" />
+
+              {deleting ? 'Deleting...' : 'Delete Client'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

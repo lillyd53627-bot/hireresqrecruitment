@@ -190,7 +190,7 @@ export default function AIAutomatedInvoicingDemo() {
             Unlock Full Automated Invoicing
           </a>
           <p className="mt-6 text-gray-600 text-lg">
-            Auto-generate invoices, send reminders & get paid faster — start your free trial today.
+            Auto-generate invoices, send reminders & get paid faster.
           </p>
         </div>
       </main>

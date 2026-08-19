@@ -1,11 +1,12 @@
-// src/App.jsx
-
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   Routes,
   Route,
   Navigate,
+  Outlet,
+  useLocation,
 } from "react-router-dom";
+import { supabase } from "./lib/supabase";
 
 // ============================================================
 // PUBLIC WEBSITE PAGES
@@ -51,8 +52,8 @@ import DashboardHome from "./pages/Dashboard/Dashboard";
 import AIAssistant from "./pages/Dashboard/AIAssistant";
 import AIClientFinder from "./pages/Dashboard/AIClientFinder";
 import AISourcing from "./pages/Dashboard/AISourcing";
-import AIVideoScreening from "./pages/Dashboard/AIVideoScreening";
 import Candidates from "./pages/Dashboard/Candidates";
+import AddApplicant from "./pages/Dashboard/AddApplicant";
 import JobTracker from "./pages/Dashboard/JobTracker";
 import Clients from "./pages/Dashboard/Clients";
 import Companies from "./pages/Dashboard/Companies";
@@ -62,9 +63,83 @@ import AISmartReporting from "./pages/Dashboard/AISmartReporting";
 import OnboardingWorkflows from "./pages/Dashboard/OnboardingWorkflows";
 import Settings from "./pages/Dashboard/Settings";
 import AdminDashboard from "./pages/Dashboard/AdminDashboard";
-import AutomatedInvoicing from "./pages/Dashboard/AutomatedInvoicing";
-import CandidatePortal from "./pages/Dashboard/CandidatePortal";
 import SmartReporting from "./pages/Dashboard/SmartReporting";
+import AIVideoScreening from "./pages/Dashboard/AIVideoScreening";
+
+// ============================================================
+// AUTHENTICATED DASHBOARD GUARD
+// ============================================================
+function DashboardAuthGuard() {
+  const location = useLocation();
+
+  const [loading, setLoading] = useState(true);
+  const [session, setSession] = useState(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadSession = async () => {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (!mounted) return;
+
+        setSession(session);
+        setLoading(false);
+      } catch (error) {
+        console.error("Unable to load Supabase session:", error);
+
+        if (mounted) {
+          setSession(null);
+          setLoading(false);
+        }
+      }
+    };
+
+    loadSession();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (!mounted) return;
+
+      setSession(nextSession);
+      setLoading(false);
+    });
+
+    return () => {
+      mounted = false;
+      subscription?.unsubscribe();
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-red-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-sm text-gray-500">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{
+          from: location.pathname + location.search,
+        }}
+      />
+    );
+  }
+
+  return <Outlet />;
+}
 
 // ============================================================
 // APP
@@ -72,15 +147,8 @@ import SmartReporting from "./pages/Dashboard/SmartReporting";
 export default function App() {
   return (
     <Routes>
-
-      {/* ======================================================
-          PUBLIC WEBSITE
-         ====================================================== */}
-
-      {/* Home */}
+      {/* PUBLIC WEBSITE */}
       <Route path="/" element={<Home />} />
-
-      {/* Main navigation */}
       <Route path="/features" element={<FeaturesDemo />} />
       <Route path="/pricing" element={<Pricing />} />
       <Route path="/demo" element={<Demo />} />
@@ -88,228 +156,58 @@ export default function App() {
       <Route path="/contact" element={<Contact />} />
       <Route path="/faq" element={<FAQ />} />
 
-      {/* Authentication */}
+      {/* AUTHENTICATION */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
 
-      {/* Legal */}
+      {/* LEGAL */}
       <Route path="/terms" element={<TermsOfService />} />
       <Route path="/privacy" element={<PrivacyPolicy />} />
       <Route path="/security" element={<Security />} />
       <Route path="/popia" element={<POPIA />} />
 
+      {/* PUBLIC FEATURE DEMOS */}
+      <Route path="/demo/ai-client-finder" element={<AIClientFinderDemo />} />
+      <Route path="/demo/ai-outreach-engine" element={<AIOutreachDemo />} />
+      <Route path="/demo/ai-talent-sourcing" element={<AITalentSourcingDemo />} />
+      <Route path="/demo/ai-video-screening" element={<AIVideoScreeningDemo />} />
+      <Route path="/demo/smart-reporting" element={<AISmartReportingDemo />} />
+      <Route path="/demo/ai-assistant" element={<AIAssistantDemo />} />
+      <Route path="/demo/candidate-portal" element={<CandidatePortalDemo />} />
+      <Route path="/demo/client-portal" element={<ClientPortalDemo />} />
+      <Route path="/demo/job-tracker" element={<JobTrackerDemo />} />
+      <Route path="/demo/automated-invoicing" element={<AIAutomatedInvoicingDemo />} />
 
-      {/* ======================================================
-          FEATURE DEMOS
-         ====================================================== */}
+      {/* PAID CRM / DASHBOARD */}
+      <Route element={<DashboardAuthGuard />}>
+        <Route path="/dashboard" element={<DashboardLayout />}>
+          <Route index element={<DashboardHome />} />
 
-      <Route
-        path="/demo/ai-client-finder"
-        element={<AIClientFinderDemo />}
-      />
+          <Route path="candidates" element={<Candidates />} />
+          <Route path="candidates/add" element={<AddApplicant />} />
 
-      <Route
-        path="/demo/ai-outreach-engine"
-        element={<AIOutreachDemo />}
-      />
+          <Route path="jobs" element={<JobTracker />} />
+          <Route path="jobtracker" element={<JobTracker />} />
 
-      <Route
-        path="/demo/ai-talent-sourcing"
-        element={<AITalentSourcingDemo />}
-      />
-
-      <Route
-        path="/demo/ai-video-screening"
-        element={<AIVideoScreeningDemo />}
-      />
-
-      <Route
-        path="/demo/smart-reporting"
-        element={<AISmartReportingDemo />}
-      />
-
-      <Route
-        path="/demo/ai-assistant"
-        element={<AIAssistantDemo />}
-      />
-
-      <Route
-        path="/demo/candidate-portal"
-        element={<CandidatePortalDemo />}
-      />
-
-      <Route
-        path="/demo/client-portal"
-        element={<ClientPortalDemo />}
-      />
-
-      <Route
-        path="/demo/job-tracker"
-        element={<JobTrackerDemo />}
-      />
-
-      <Route
-        path="/demo/automated-invoicing"
-        element={<AIAutomatedInvoicingDemo />}
-      />
-
-
-      {/* ======================================================
-          DASHBOARD
-         ====================================================== */}
-
-      <Route
-        path="/dashboard"
-        element={<DashboardLayout />}
-      >
-
-        {/* Dashboard Home */}
-        <Route
-          index
-          element={<DashboardHome />}
-        />
-
-        {/* AI Assistant */}
-        <Route
-          path="aiassistant"
-          element={<AIAssistant />}
-        />
-
-        {/* AI Sourcing */}
-        <Route
-          path="aisourcing"
-          element={<AISourcing />}
-        />
-
-        {/* AI Client Finder */}
-        <Route
-          path="aiclientfinder"
-          element={<AIClientFinder />}
-        />
-
-        {/* Candidates */}
-        <Route
-          path="candidates"
-          element={<Candidates />}
-        />
-
-        {/* Jobs */}
-        <Route
-          path="jobs"
-          element={<JobTracker />}
-        />
-
-        {/* Job Tracker alias */}
-        <Route
-          path="jobtracker"
-          element={<JobTracker />}
-        />
-
-        {/* Clients */}
-        <Route
-          path="clients"
-          element={<Clients />}
-        />
-
-        {/* Companies */}
-        <Route
-          path="companies"
-          element={<Companies />}
-        />
-
-        {/* Outreach */}
-        <Route
-          path="outreach"
-          element={<Outreach />}
-        />
-
-        {/* Interviews */}
-        <Route
-          path="interviews"
-          element={<Interviews />}
-        />
-
-        {/* Analytics */}
-        <Route
-          path="analytics"
-          element={<AISmartReporting />}
-        />
-
-        {/* Smart Reporting */}
-        <Route
-          path="smart-reporting"
-          element={<SmartReporting />}
-        />
-
-        {/* AI Video Screening */}
-        <Route
-          path="video-screening"
-          element={<AIVideoScreening />}
-        />
-
-        {/* ==================================================
-            ONBOARDING
-           ================================================== */}
-
-        {/* Sidebar route */}
-        <Route
-          path="onboardingworkflows"
-          element={<OnboardingWorkflows />}
-        />
-
-        {/* Short alias */}
-        <Route
-          path="onboarding"
-          element={<OnboardingWorkflows />}
-        />
-
-        {/* ==================================================
-            SETTINGS
-           ================================================== */}
-
-        <Route
-          path="settings"
-          element={<Settings />}
-        />
-
-        {/* ==================================================
-            ADMIN
-           ================================================== */}
-
-        <Route
-          path="admin"
-          element={<AdminDashboard />}
-        />
-
-        {/* ==================================================
-            OTHER DASHBOARD FEATURES
-           ================================================== */}
-
-        {/* Automated Invoicing */}
-        <Route
-          path="invoicing"
-          element={<AutomatedInvoicing />}
-        />
-
-        {/* Candidate Portal */}
-        <Route
-          path="candidateportal"
-          element={<CandidatePortal />}
-        />
-
+          <Route path="clients" element={<Clients />} />
+          <Route path="outreach" element={<Outreach />} />
+          <Route path="interviews" element={<Interviews />} />
+          <Route path="analytics" element={<AISmartReporting />} />
+          <Route path="aiclientfinder" element={<AIClientFinder />} />
+          <Route path="aisourcing" element={<AISourcing />} />
+          <Route path="aiassistant" element={<AIAssistant />} />
+          <Route path="onboarding" element={<OnboardingWorkflows />} />
+          <Route path="onboardingworkflows" element={<OnboardingWorkflows />} />
+          <Route path="settings" element={<Settings />} />
+          <Route path="admin" element={<AdminDashboard />} />
+          <Route path="companies" element={<Companies />} />
+          <Route path="smart-reporting" element={<SmartReporting />} />
+          <Route path="video-screening" element={<AIVideoScreening />} />
+        </Route>
       </Route>
 
-
-      {/* ======================================================
-          UNKNOWN ROUTES
-         ====================================================== */}
-
-      {/* Unknown URLs go to PUBLIC HOME */}
-      <Route
-        path="*"
-        element={<Navigate to="/" replace />}
-      />
-
+      {/* UNKNOWN ROUTES */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

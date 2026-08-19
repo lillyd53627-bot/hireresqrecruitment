@@ -1,1021 +1,2751 @@
 // src/pages/Dashboard/JobTracker.jsx
-import React, { useState, useEffect, useMemo } from 'react';
+
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+
 import {
-  Search, Plus, Briefcase, Building2, MapPin, Users,
-  MoreVertical, ChevronRight, Edit2, Trash2, ArrowLeft,
-  Clock, Circle, DollarSign, UserCheck, UserPlus, Mail, Phone,
-  FileText, Upload, ClipboardPaste, Link2, File, X
+  Search,
+  Plus,
+  Briefcase,
+  MapPin,
+  Users,
+  MoreVertical,
+  ChevronRight,
+  Edit2,
+  Trash2,
+  ArrowLeft,
+  Circle,
+  ClipboardPaste,
+  X,
+  Clock,
+  FileText,
+  AlertCircle,
+  RefreshCw,
+  UserCheck,
+  UserPlus,
+  CheckCircle2,
+  MessageSquare,
+  CalendarDays,
+  UserX,
+  Send,
 } from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuTrigger, DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu';
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-  DialogFooter, DialogDescription,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog';
+
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
+
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
+
 import Sidebar from '@/components/Dashboard/Sidebar';
 import TopBar from '@/components/Dashboard/TopBar';
 
-const APPLICATION_STATUSES = [
-  { value: 'shortlisted', label: 'Shortlisted', color: 'bg-teal-100 text-teal-700' },
-  { value: 'applied', label: 'Applied', color: 'bg-blue-100 text-blue-700' },
-  { value: 'screening', label: 'Screening', color: 'bg-purple-100 text-purple-700' },
-  { value: 'interview', label: 'Interview', color: 'bg-yellow-100 text-yellow-700' },
-  { value: 'offer', label: 'Offer', color: 'bg-orange-100 text-orange-700' },
-  { value: 'hired', label: 'Hired', color: 'bg-green-100 text-green-700' },
-  { value: 'rejected', label: 'Rejected', color: 'bg-red-100 text-red-700' },
-];
+import { supabase } from '@/lib/supabase';
+
+/* ============================================================================
+   CONSTANTS
+============================================================================ */
 
 const JOB_STATUSES = [
-  { value: 'open', label: 'Open', color: 'bg-green-100 text-green-700' },
-  { value: 'on_hold', label: 'On Hold', color: 'bg-yellow-100 text-yellow-700' },
-  { value: 'filled', label: 'Filled', color: 'bg-blue-100 text-blue-700' },
-  { value: 'closed', label: 'Closed', color: 'bg-gray-100 text-gray-700' },
-];
-
-const JOB_TYPES = ['Full-time', 'Part-time', 'Contract', 'Internship'];
-const WORK_MODES = ['On-site', 'Hybrid', 'Remote'];
-const LOCATIONS = ['Cape Town', 'Johannesburg', 'Durban', 'Pretoria', 'Remote', 'Other'];
-const SOURCES = ['LinkedIn', 'Website', 'Referral', 'Job Board', 'Agency', 'Pasted Job', 'Other'];
-
-const SEED_JOBS = [
   {
-    id: 1,
-    title: 'Senior Frontend Developer',
-    clientName: 'TechCorp SA',
-    location: 'Cape Town',
-    type: 'Full-time',
-    workMode: 'Hybrid',
-    status: 'open',
-    salary: 'R65,000 - R85,000',
-    postedAt: new Date(Date.now() - 5 * 86400000).toISOString(),
-    description: 'We are looking for an experienced Frontend Developer to join our growing engineering team.',
-    requirements: '5+ years React\nStrong TypeScript\nTailwind CSS',
-    isPasted: false,
-    applications: [
-      {
-        id: 101,
-        name: 'Thabo Molefe',
-        email: 'thabo.molefe@email.com',
-        phone: '+27 82 111 2233',
-        status: 'shortlisted',
-        source: 'LinkedIn',
-        appliedAt: new Date(Date.now() - 4 * 86400000).toISOString(),
-        notes: 'Strong portfolio.',
-        profileText: 'Thabo Molefe\nSenior Frontend Developer\n\n8 years experience\n- React, TypeScript, Next.js\n- Led UI team of 5\n- Built fintech dashboards',
-        cvFileName: null,
-        cvData: null,
-        linkedToPastedJob: false,
-      },
-    ],
+    value: 'open',
+    label: 'Open',
+    color: 'bg-green-100 text-green-700',
   },
   {
-    id: 2,
-    title: 'Financial Analyst',
-    clientName: 'FinanceHub',
-    location: 'Johannesburg',
-    type: 'Full-time',
-    workMode: 'On-site',
-    status: 'open',
-    salary: 'R45,000 - R60,000',
-    postedAt: new Date(Date.now() - 12 * 86400000).toISOString(),
-    description: 'Join our finance team.',
-    requirements: '3+ years financial analysis\nExcel & Power BI',
-    isPasted: false,
-    applications: [],
+    value: 'on_hold',
+    label: 'On Hold',
+    color: 'bg-yellow-100 text-yellow-700',
+  },
+  {
+    value: 'filled',
+    label: 'Filled',
+    color: 'bg-blue-100 text-blue-700',
+  },
+  {
+    value: 'closed',
+    label: 'Closed',
+    color: 'bg-gray-100 text-gray-700',
   },
 ];
 
-const formatRelative = (iso) => {
-  if (!iso) return '—';
-  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
-  if (days === 0) return 'Today';
-  if (days === 1) return 'Yesterday';
-  if (days < 7) return `${days} days ago`;
-  if (days < 30) return `${Math.floor(days / 7)} weeks ago`;
-  return new Date(iso).toLocaleDateString('en-ZA');
+const JOB_TYPES = [
+  'Full-time',
+  'Part-time',
+  'Contract',
+  'Internship',
+];
+
+const WORK_MODES = [
+  'On-site',
+  'Hybrid',
+  'Remote',
+];
+
+const LOCATIONS = [
+  'Cape Town',
+  'Johannesburg',
+  'Durban',
+  'Pretoria',
+  'Remote',
+  'Other',
+];
+
+const CANDIDATE_STAGES = [
+  {
+    value: 'sourced',
+    label: 'Sourced',
+    icon: UserPlus,
+    color: 'bg-gray-100 text-gray-700',
+  },
+  {
+    value: 'screening',
+    label: 'Screening',
+    icon: MessageSquare,
+    color: 'bg-blue-100 text-blue-700',
+  },
+  {
+    value: 'shortlisted',
+    label: 'Shortlisted',
+    icon: CheckCircle2,
+    color: 'bg-purple-100 text-purple-700',
+  },
+  {
+    value: 'interview',
+    label: 'Interview',
+    icon: CalendarDays,
+    color: 'bg-yellow-100 text-yellow-700',
+  },
+  {
+    value: 'offer',
+    label: 'Offer',
+    icon: Send,
+    color: 'bg-orange-100 text-orange-700',
+  },
+  {
+    value: 'hired',
+    label: 'Hired',
+    icon: UserCheck,
+    color: 'bg-green-100 text-green-700',
+  },
+  {
+    value: 'rejected',
+    label: 'Rejected',
+    icon: UserX,
+    color: 'bg-red-100 text-red-700',
+  },
+];
+
+/* ============================================================================
+   HELPERS
+============================================================================ */
+
+const EMPTY_JOB_FORM = {
+  title: '',
+  description: '',
+  location: 'Johannesburg',
+  job_type: 'Full-time',
+  work_mode: 'On-site',
 };
 
-const generateId = () => Date.now() + Math.floor(Math.random() * 1000);
+const formatRelative = (value) => {
+  if (!value) {
+    return '—';
+  }
 
-const getStatusBadge = (status, list = JOB_STATUSES) => {
-  const found = list.find((s) => s.value === status);
-  return found || { label: status, color: 'bg-gray-100 text-gray-700' };
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return '—';
+  }
+
+  const difference = Date.now() - date.getTime();
+
+  if (difference < 0) {
+    return 'Today';
+  }
+
+  const days = Math.floor(difference / 86400000);
+
+  if (days === 0) {
+    return 'Today';
+  }
+
+  if (days === 1) {
+    return 'Yesterday';
+  }
+
+  if (days < 7) {
+    return `${days} days ago`;
+  }
+
+  if (days < 30) {
+    return `${Math.floor(days / 7)} weeks ago`;
+  }
+
+  return date.toLocaleDateString('en-ZA');
 };
 
-function parseJobPost(text) {
-  const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
+const getStatusBadge = (status) => {
+  return (
+    JOB_STATUSES.find((item) => item.value === status) || {
+      value: 'open',
+      label: 'Open',
+      color: 'bg-green-100 text-green-700',
+    }
+  );
+};
+
+const getStage = (stage) => {
+  return (
+    CANDIDATE_STAGES.find((item) => item.value === stage) || {
+      value: 'sourced',
+      label: 'Sourced',
+      icon: UserPlus,
+      color: 'bg-gray-100 text-gray-700',
+    }
+  );
+};
+
+const parseJobPost = (text) => {
+  const lines = text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
   let title = lines[0] || 'Untitled Job';
-  let description = text;
-  let requirements = '';
   let location = 'Johannesburg';
-  let clientName = '';
 
-  const titleMatch = text.match(/(?:job title|position|role)\s*[:\-–]\s*(.+)/i);
-  if (titleMatch) title = titleMatch[1].trim();
+  const titleMatch = text.match(
+    /(?:job title|position|role|job)\s*[:\-–]\s*(.+)/i
+  );
 
-  const locMatch = text.match(/(?:location|based in|city)\s*[:\-–]\s*(.+)/i);
-  if (locMatch) location = locMatch[1].trim().split(/[,\n]/)[0];
+  if (titleMatch?.[1]) {
+    title = titleMatch[1].trim();
+  }
 
-  const clientMatch = text.match(/(?:company|employer|client)\s*[:\-–]\s*(.+)/i);
-  if (clientMatch) clientName = clientMatch[1].trim().split(/[,\n]/)[0];
+  const locationMatch = text.match(
+    /(?:location|based in|city)\s*[:\-–]\s*(.+)/i
+  );
 
-  const reqMatch = text.match(/(?:requirements|qualifications|must have|skills)[:\s]*([\s\S]+?)(?=\n\n|\n[A-Z]|$)/i);
-  if (reqMatch) requirements = reqMatch[1].trim();
+  if (locationMatch?.[1]) {
+    location = locationMatch[1]
+      .trim()
+      .split(/[,\n]/)[0]
+      .trim();
+  }
 
   return {
     title: title.slice(0, 120),
-    clientName: clientName || 'Pasted Company',
-    location,
-    type: 'Full-time',
-    workMode: 'Hybrid',
-    status: 'open',
-    salary: '',
-    description,
-    requirements,
-    isPasted: true,
+    description: text.trim(),
+    location: location || 'Johannesburg',
   };
-}
+};
+
+/* ============================================================================
+   COMPONENT
+============================================================================ */
 
 export default function JobTracker() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [jobs, setJobs] = useState(() => {
-    try {
-      const saved = localStorage.getItem('crm_jobs');
-      return saved ? JSON.parse(saved) : SEED_JOBS;
-    } catch {
-      return SEED_JOBS;
-    }
-  });
+  /* --------------------------------------------------------------------------
+     UI
+  -------------------------------------------------------------------------- */
 
-  useEffect(() => {
-    localStorage.setItem('crm_jobs', JSON.stringify(jobs));
-  }, [jobs]);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  /* --------------------------------------------------------------------------
+     AUTH
+  -------------------------------------------------------------------------- */
+
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  /* --------------------------------------------------------------------------
+     JOBS
+  -------------------------------------------------------------------------- */
+
+  const [jobs, setJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  /* --------------------------------------------------------------------------
+     CANDIDATES
+  -------------------------------------------------------------------------- */
+
+  const [candidates, setCandidates] = useState([]);
+  const [candidatesLoading, setCandidatesLoading] = useState(false);
+
+  /* --------------------------------------------------------------------------
+     ERRORS
+  -------------------------------------------------------------------------- */
+
+  const [error, setError] = useState('');
+
+  /* --------------------------------------------------------------------------
+     FILTERS
+  -------------------------------------------------------------------------- */
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [typeFilter, setTypeFilter] = useState('all');
   const [locationFilter, setLocationFilter] = useState('all');
+
+  /* --------------------------------------------------------------------------
+     SELECTED JOB
+  -------------------------------------------------------------------------- */
+
   const [selectedJob, setSelectedJob] = useState(null);
-  const [detailTab, setDetailTab] = useState('overview');
-  const [selectedApplicant, setSelectedApplicant] = useState(null);
+  const [showPipeline, setShowPipeline] = useState(false);
+
+  /* --------------------------------------------------------------------------
+     PIPELINE
+  -------------------------------------------------------------------------- */
+
+  const [pipelineSearch, setPipelineSearch] = useState('');
+  const [pipelineCandidate, setPipelineCandidate] = useState(null);
+
+  /* --------------------------------------------------------------------------
+     DIALOGS
+  -------------------------------------------------------------------------- */
 
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [editingJob, setEditingJob] = useState(null);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [jobToDelete, setJobToDelete] = useState(null);
   const [isPasteOpen, setIsPasteOpen] = useState(false);
+
+  /* --------------------------------------------------------------------------
+     JOB FORM
+  -------------------------------------------------------------------------- */
+
+  const [jobForm, setJobForm] = useState(EMPTY_JOB_FORM);
+  const [editingJob, setEditingJob] = useState(null);
+  const [jobToDelete, setJobToDelete] = useState(null);
   const [pasteText, setPasteText] = useState('');
 
-  const emptyJobForm = {
-    title: '', clientName: '', location: 'Cape Town', type: 'Full-time',
-    workMode: 'Hybrid', status: 'open', salary: '', description: '', requirements: '', isPasted: false,
-  };
-  const [jobForm, setJobForm] = useState(emptyJobForm);
+  /* ==========================================================================
+     AUTH
+  ========================================================================== */
 
-  const [isAppOpen, setIsAppOpen] = useState(false);
-  const [editingApp, setEditingApp] = useState(null);
-  const emptyAppForm = {
-    name: '', email: '', phone: '', status: 'shortlisted', source: 'LinkedIn',
-    notes: '', profileText: '', cvFileName: null, cvData: null, linkedToPastedJob: false,
+  useEffect(() => {
+    let mounted = true;
+
+    const loadUser = async () => {
+      setAuthLoading(true);
+
+      const {
+        data: { user: currentUser },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (!mounted) {
+        return;
+      }
+
+      if (userError) {
+        console.error('Supabase auth error:', userError);
+        setError('Unable to verify your login session.');
+        setUser(null);
+      } else {
+        setUser(currentUser || null);
+      }
+
+      setAuthLoading(false);
+    };
+
+    loadUser();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!mounted) {
+        return;
+      }
+
+      setUser(session?.user || null);
+      setAuthLoading(false);
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  /* ==========================================================================
+     LOAD JOBS
+  ========================================================================== */
+
+  const loadJobs = async () => {
+    if (!user?.id) {
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const {
+        data,
+        error: jobsError,
+      } = await supabase
+        .from('jobs')
+        .select(`
+          id,
+          title,
+          description,
+          location,
+          created_at,
+          user_id
+        `)
+        .eq('user_id', user.id)
+        .order('created_at', {
+          ascending: false,
+        });
+
+      if (jobsError) {
+        throw jobsError;
+      }
+
+      const loadedJobs = data || [];
+
+      setJobs(loadedJobs);
+
+      if (selectedJob?.id) {
+        const refreshedJob = loadedJobs.find(
+          (job) => job.id === selectedJob.id
+        );
+
+        if (refreshedJob) {
+          setSelectedJob(refreshedJob);
+        } else {
+          setSelectedJob(null);
+          setShowPipeline(false);
+        }
+      }
+    } catch (err) {
+      console.error('Load jobs error:', err);
+
+      setError(
+        err?.message || 'Unable to load jobs from Supabase.'
+      );
+    } finally {
+      setLoading(false);
+    }
   };
-  const [appForm, setAppForm] = useState(emptyAppForm);
+
+  /* ==========================================================================
+     LOAD CANDIDATES
+  ========================================================================== */
+
+  const loadCandidates = async () => {
+    if (!user?.id) {
+      return;
+    }
+
+    setCandidatesLoading(true);
+
+    try {
+      const {
+        data,
+        error: candidatesError,
+      } = await supabase
+        .from('candidates')
+        .select(`
+          id,
+          name,
+          title,
+          location,
+          email,
+          phone,
+          stage,
+          shortlisted,
+          match_score,
+          experience_years,
+          experience,
+          education,
+          skills,
+          notes,
+          industry,
+          salary,
+          nationality,
+          availability,
+          linkedin_url,
+          job_id,
+          user_id,
+          created_at,
+          updated_at
+        `)
+        .eq('user_id', user.id)
+        .order('created_at', {
+          ascending: false,
+        });
+
+      if (candidatesError) {
+        throw candidatesError;
+      }
+
+      setCandidates(data || []);
+    } catch (err) {
+      console.error('Load candidates error:', err);
+
+      setError(
+        err?.message || 'Unable to load candidates.'
+      );
+    } finally {
+      setCandidatesLoading(false);
+    }
+  };
+
+  /* ==========================================================================
+     INITIAL DATA LOAD
+  ========================================================================== */
+
+  useEffect(() => {
+    if (!user?.id) {
+      setJobs([]);
+      setCandidates([]);
+      setLoading(false);
+      return;
+    }
+
+    loadJobs();
+    loadCandidates();
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  /* ==========================================================================
+     SELECTED JOB CANDIDATES
+  ========================================================================== */
+
+  const selectedJobCandidates = useMemo(() => {
+    if (!selectedJob?.id) {
+      return [];
+    }
+
+    return candidates.filter(
+      (candidate) => candidate.job_id === selectedJob.id
+    );
+  }, [candidates, selectedJob]);
+
+  /* ==========================================================================
+     CANDIDATE COUNTS BY JOB
+  ========================================================================== */
+
+  const candidateCountsByJob = useMemo(() => {
+    const counts = {};
+
+    candidates.forEach((candidate) => {
+      if (!candidate.job_id) {
+        return;
+      }
+
+      if (!counts[candidate.job_id]) {
+        counts[candidate.job_id] = {
+          total: 0,
+          shortlisted: 0,
+          interview: 0,
+          hired: 0,
+        };
+      }
+
+      counts[candidate.job_id].total += 1;
+
+      if (
+        candidate.stage === 'shortlisted' ||
+        candidate.shortlisted === true
+      ) {
+        counts[candidate.job_id].shortlisted += 1;
+      }
+
+      if (candidate.stage === 'interview') {
+        counts[candidate.job_id].interview += 1;
+      }
+
+      if (candidate.stage === 'hired') {
+        counts[candidate.job_id].hired += 1;
+      }
+    });
+
+    return counts;
+  }, [candidates]);
+
+  /* ==========================================================================
+     FILTERED JOBS
+  ========================================================================== */
 
   const filteredJobs = useMemo(() => {
-    return jobs.filter((j) => {
-      const q = search.toLowerCase();
-      const matchesSearch = !q || j.title.toLowerCase().includes(q) || j.clientName.toLowerCase().includes(q) || j.location.toLowerCase().includes(q);
-      const matchesStatus = statusFilter === 'all' || j.status === statusFilter;
-      const matchesType = typeFilter === 'all' || j.type === typeFilter;
-      const matchesLocation = locationFilter === 'all' || j.location === locationFilter;
-      return matchesSearch && matchesStatus && matchesType && matchesLocation;
+    const query = search.trim().toLowerCase();
+
+    return jobs.filter((job) => {
+      const title = (job.title || '').toLowerCase();
+      const description = (job.description || '').toLowerCase();
+      const location = (job.location || '').toLowerCase();
+
+      const matchesSearch =
+        !query ||
+        title.includes(query) ||
+        description.includes(query) ||
+        location.includes(query);
+
+      // Current jobs query intentionally does not use a status column.
+      // Until jobs.status is confirmed to exist, all loaded jobs are treated
+      // as Open.
+      const matchesStatus =
+        statusFilter === 'all' ||
+        statusFilter === 'open';
+
+      const matchesLocation =
+        locationFilter === 'all' ||
+        job.location === locationFilter;
+
+      return (
+        matchesSearch &&
+        matchesStatus &&
+        matchesLocation
+      );
     });
-  }, [jobs, search, statusFilter, typeFilter, locationFilter]);
+  }, [
+    jobs,
+    search,
+    statusFilter,
+    locationFilter,
+  ]);
 
-  const stats = useMemo(() => ({
-    total: jobs.length,
-    open: jobs.filter((j) => j.status === 'open').length,
-    applicants: jobs.reduce((s, j) => s + (j.applications?.length || 0), 0),
-    hired: jobs.reduce((s, j) => s + (j.applications?.filter((a) => a.status === 'hired').length || 0), 0),
-    pasted: jobs.filter((j) => j.isPasted).length,
-  }), [jobs]);
+  /* ==========================================================================
+     STATS
+  ========================================================================== */
 
-  const getAppCounts = (job) => {
-    const apps = job.applications || [];
+  const stats = useMemo(() => {
+    const totalCandidates = candidates.length;
+
+    const activeJobs = jobs.length;
+
     return {
-      total: apps.length,
-      shortlisted: apps.filter((a) => a.status === 'shortlisted').length,
-      interview: apps.filter((a) => a.status === 'interview').length,
-      offer: apps.filter((a) => a.status === 'offer').length,
-      hired: apps.filter((a) => a.status === 'hired').length,
-      matched: apps.filter((a) => a.linkedToPastedJob).length,
+      total: jobs.length,
+      open: activeJobs,
+      candidates: totalCandidates,
     };
+  }, [jobs, candidates]);
+
+  /* ==========================================================================
+     PIPELINE COUNTS
+  ========================================================================== */
+
+  const pipelineCounts = useMemo(() => {
+    const counts = {};
+
+    CANDIDATE_STAGES.forEach((stage) => {
+      counts[stage.value] = 0;
+    });
+
+    selectedJobCandidates.forEach((candidate) => {
+      const stage = candidate.stage || 'sourced';
+
+      if (
+        Object.prototype.hasOwnProperty.call(
+          counts,
+          stage
+        )
+      ) {
+        counts[stage] += 1;
+      } else {
+        counts.sourced += 1;
+      }
+    });
+
+    return counts;
+  }, [selectedJobCandidates]);
+
+  /* ==========================================================================
+     PIPELINE SEARCH
+  ========================================================================== */
+
+  const pipelineFilteredCandidates = useMemo(() => {
+    const query = pipelineSearch.trim().toLowerCase();
+
+    if (!query) {
+      return selectedJobCandidates;
+    }
+
+    return selectedJobCandidates.filter((candidate) => {
+      return (
+        (candidate.name || '')
+          .toLowerCase()
+          .includes(query) ||
+        (candidate.title || '')
+          .toLowerCase()
+          .includes(query) ||
+        (candidate.email || '')
+          .toLowerCase()
+          .includes(query) ||
+        (candidate.location || '')
+          .toLowerCase()
+          .includes(query)
+      );
+    });
+  }, [
+    selectedJobCandidates,
+    pipelineSearch,
+  ]);
+
+  /* ==========================================================================
+     OPEN ADD JOB
+  ========================================================================== */
+
+  const openAddJob = () => {
+    setError('');
+    setJobForm(EMPTY_JOB_FORM);
+    setEditingJob(null);
+    setIsAddOpen(true);
   };
 
-  const openAddJob = () => { setJobForm(emptyJobForm); setIsAddOpen(true); };
+  /* ==========================================================================
+     OPEN EDIT JOB
+  ========================================================================== */
+
   const openEditJob = (job) => {
+    setError('');
+
     setEditingJob(job);
-    setJobForm({ ...job, salary: job.salary || '', description: job.description || '', requirements: job.requirements || '' });
+
+    setJobForm({
+      title: job.title || '',
+      description: job.description || '',
+      location: job.location || 'Johannesburg',
+      job_type: 'Full-time',
+      work_mode: 'On-site',
+    });
+
     setIsEditOpen(true);
   };
 
-  const saveJob = () => {
-    if (!jobForm.title.trim() || !jobForm.clientName.trim()) return;
-    if (isEditOpen && editingJob) {
-      setJobs((prev) => prev.map((j) => (j.id === editingJob.id ? { ...j, ...jobForm } : j)));
-      if (selectedJob?.id === editingJob.id) setSelectedJob((prev) => ({ ...prev, ...jobForm }));
-      setIsEditOpen(false);
-    } else {
-      setJobs((prev) => [{ id: generateId(), ...jobForm, applications: [], postedAt: new Date().toISOString() }, ...prev]);
-      setIsAddOpen(false);
+  /* ==========================================================================
+     CLOSE JOB FORM
+  ========================================================================== */
+
+  const closeJobForm = () => {
+    setIsAddOpen(false);
+    setIsEditOpen(false);
+    setEditingJob(null);
+    setJobForm(EMPTY_JOB_FORM);
+  };
+
+  /* ==========================================================================
+     SAVE JOB
+  ========================================================================== */
+
+  const saveJob = async () => {
+    if (!user?.id) {
+      setError('You must be logged in to create a job.');
+      return;
     }
-    setJobForm(emptyJobForm);
-  };
 
-  const handlePasteJob = () => {
-    if (!pasteText.trim()) return;
-    const parsed = parseJobPost(pasteText);
-    const newJob = { id: generateId(), ...parsed, applications: [], postedAt: new Date().toISOString() };
-    setJobs((prev) => [newJob, ...prev]);
-    setPasteText('');
-    setIsPasteOpen(false);
-    setSelectedJob(newJob);
-    setDetailTab('applications');
-  };
+    const title = jobForm.title.trim();
 
-  const confirmDeleteJob = (job) => { setJobToDelete(job); setIsDeleteOpen(true); };
-  const deleteJob = () => {
-    if (!jobToDelete) return;
-    setJobs((prev) => prev.filter((j) => j.id !== jobToDelete.id));
-    if (selectedJob?.id === jobToDelete.id) setSelectedJob(null);
-    setIsDeleteOpen(false);
-    setJobToDelete(null);
-  };
+    if (!title) {
+      setError('Please enter a job title.');
+      return;
+    }
 
-  const updateJobStatus = (jobId, newStatus) => {
-    setJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, status: newStatus } : j)));
-    if (selectedJob?.id === jobId) setSelectedJob((prev) => ({ ...prev, status: newStatus }));
-  };
+    setSaving(true);
+    setError('');
 
-  const openAddApp = (linkToPasted = false) => {
-    setEditingApp(null);
-    setAppForm({
-      ...emptyAppForm,
-      linkedToPastedJob: linkToPasted || Boolean(selectedJob?.isPasted),
-      source: selectedJob?.isPasted ? 'Pasted Job' : 'LinkedIn',
-    });
-    setIsAppOpen(true);
-  };
+    try {
+      if (isEditOpen && editingJob) {
+        const {
+          data,
+          error: updateError,
+        } = await supabase
+          .from('jobs')
+          .update({
+            title,
+            description:
+              jobForm.description?.trim() || null,
+            location:
+              jobForm.location?.trim() || null,
+          })
+          .eq('id', editingJob.id)
+          .eq('user_id', user.id)
+          .select()
+          .single();
 
-  const openEditApp = (app) => {
-    setEditingApp(app);
-    setAppForm({
-      ...app,
-      phone: app.phone || '',
-      notes: app.notes || '',
-      profileText: app.profileText || '',
-      cvFileName: app.cvFileName || null,
-      cvData: app.cvData || null,
-      linkedToPastedJob: app.linkedToPastedJob || false,
-    });
-    setIsAppOpen(true);
-  };
+        if (updateError) {
+          throw updateError;
+        }
 
-  const handleCvUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { alert('CV must be under 5MB'); return; }
-    const reader = new FileReader();
-    reader.onload = () => setAppForm((prev) => ({ ...prev, cvFileName: file.name, cvData: reader.result }));
-    reader.readAsDataURL(file);
-  };
+        setJobs((previous) =>
+          previous.map((job) =>
+            job.id === editingJob.id
+              ? data
+              : job
+          )
+        );
 
-  const saveApplication = () => {
-    if (!appForm.name.trim() || !selectedJob) return;
-    setJobs((prev) => prev.map((j) => {
-      if (j.id !== selectedJob.id) return j;
-      let applications;
-      if (editingApp) {
-        applications = (j.applications || []).map((a) => a.id === editingApp.id ? { ...a, ...appForm } : a);
-      } else {
-        applications = [{ id: generateId(), ...appForm, appliedAt: new Date().toISOString() }, ...(j.applications || [])];
+        setSelectedJob((previous) =>
+          previous?.id === editingJob.id
+            ? data
+            : previous
+        );
+
+        closeJobForm();
+        return;
       }
-      const updated = { ...j, applications };
-      setSelectedJob(updated);
-      return updated;
-    }));
-    setIsAppOpen(false);
-    setEditingApp(null);
-    setAppForm(emptyAppForm);
+
+      /* ----------------------------------------------------------------------
+         POST JOB
+      ---------------------------------------------------------------------- */
+
+      const {
+        data,
+        error: insertError,
+      } = await supabase
+        .from('jobs')
+        .insert({
+          title,
+          description:
+            jobForm.description?.trim() || null,
+          location:
+            jobForm.location?.trim() || null,
+          user_id: user.id,
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        throw insertError;
+      }
+
+      setJobs((previous) => [
+        data,
+        ...previous,
+      ]);
+
+      setSelectedJob(data);
+      setShowPipeline(true);
+      setPipelineSearch('');
+
+      closeJobForm();
+
+      /*
+       * The newly posted job has no candidates yet.
+       * Candidates will appear once their candidates.job_id points to
+       * this job.
+       */
+    } catch (err) {
+      console.error('Save job error:', err);
+
+      setError(
+        err?.message || 'Unable to save this job.'
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const updateAppStatus = (appId, newStatus) => {
-    setJobs((prev) => prev.map((j) => {
-      if (j.id !== selectedJob.id) return j;
-      const applications = (j.applications || []).map((a) => a.id === appId ? { ...a, status: newStatus } : a);
-      const updated = { ...j, applications };
-      setSelectedJob(updated);
-      return updated;
-    }));
+  /* ==========================================================================
+     PASTE JOB
+  ========================================================================== */
+
+  const handlePasteJob = async () => {
+    if (!user?.id) {
+      setError('You must be logged in to create a job.');
+      return;
+    }
+
+    if (!pasteText.trim()) {
+      return;
+    }
+
+    setSaving(true);
+    setError('');
+
+    try {
+      const parsed = parseJobPost(pasteText);
+
+      const {
+        data,
+        error: insertError,
+      } = await supabase
+        .from('jobs')
+        .insert({
+          title: parsed.title,
+          description: parsed.description,
+          location: parsed.location,
+          user_id: user.id,
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        throw insertError;
+      }
+
+      setJobs((previous) => [
+        data,
+        ...previous,
+      ]);
+
+      setPasteText('');
+      setIsPasteOpen(false);
+
+      setSelectedJob(data);
+      setShowPipeline(true);
+      setPipelineSearch('');
+    } catch (err) {
+      console.error('Paste job error:', err);
+
+      setError(
+        err?.message || 'Unable to create pasted job.'
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const deleteApplication = (appId) => {
-    setJobs((prev) => prev.map((j) => {
-      if (j.id !== selectedJob.id) return j;
-      const applications = (j.applications || []).filter((a) => a.id !== appId);
-      const updated = { ...j, applications };
-      setSelectedJob(updated);
-      if (selectedApplicant?.id === appId) setSelectedApplicant(null);
-      return updated;
-    }));
+  /* ==========================================================================
+     DELETE JOB
+  ========================================================================== */
+
+  const confirmDeleteJob = (job) => {
+    setJobToDelete(job);
+    setIsDeleteOpen(true);
   };
 
-  const toggleLinkToPasted = (appId) => {
-    setJobs((prev) => prev.map((j) => {
-      if (j.id !== selectedJob.id) return j;
-      const applications = (j.applications || []).map((a) => a.id === appId ? { ...a, linkedToPastedJob: !a.linkedToPastedJob } : a);
-      const updated = { ...j, applications };
-      setSelectedJob(updated);
-      return updated;
-    }));
+  const deleteJob = async () => {
+    if (!jobToDelete || !user?.id) {
+      return;
+    }
+
+    setSaving(true);
+    setError('');
+
+    try {
+      const {
+        error: deleteError,
+      } = await supabase
+        .from('jobs')
+        .delete()
+        .eq('id', jobToDelete.id)
+        .eq('user_id', user.id);
+
+      if (deleteError) {
+        throw deleteError;
+      }
+
+      setJobs((previous) =>
+        previous.filter(
+          (job) => job.id !== jobToDelete.id
+        )
+      );
+
+      /*
+       * Your candidates table has:
+       *
+       * candidates_job_id_fkey
+       * ON DELETE SET NULL
+       *
+       * Therefore the database should automatically clear job_id.
+       * We also update local state immediately.
+       */
+      setCandidates((previous) =>
+        previous.map((candidate) =>
+          candidate.job_id === jobToDelete.id
+            ? {
+                ...candidate,
+                job_id: null,
+              }
+            : candidate
+        )
+      );
+
+      if (selectedJob?.id === jobToDelete.id) {
+        setSelectedJob(null);
+        setShowPipeline(false);
+      }
+
+      setJobToDelete(null);
+      setIsDeleteOpen(false);
+    } catch (err) {
+      console.error('Delete job error:', err);
+
+      setError(
+        err?.message || 'Unable to delete this job.'
+      );
+    } finally {
+      setSaving(false);
+    }
   };
+
+  /* ==========================================================================
+     OPEN PIPELINE
+  ========================================================================== */
+
+  const openPipeline = (job) => {
+    setSelectedJob(job);
+    setShowPipeline(true);
+    setPipelineSearch('');
+    setPipelineCandidate(null);
+  };
+
+  /* ==========================================================================
+     CLOSE PIPELINE
+  ========================================================================== */
+
+  const closePipeline = () => {
+    setShowPipeline(false);
+    setPipelineCandidate(null);
+    setPipelineSearch('');
+  };
+
+  /* ==========================================================================
+     UPDATE CANDIDATE STAGE
+  ========================================================================== */
+
+  const updateCandidateStage = async (
+    candidate,
+    newStage
+  ) => {
+    if (!candidate?.id || !user?.id) {
+      return;
+    }
+
+    setSaving(true);
+    setError('');
+
+    try {
+      /*
+       * Keep shortlist and stage synchronized.
+       *
+       * If the candidate moves into Shortlisted, shortlisted = true.
+       * If they move to another stage, shortlisted = false.
+       */
+      const nextShortlisted =
+        newStage === 'shortlisted';
+
+      const {
+        data,
+        error: updateError,
+      } = await supabase
+        .from('candidates')
+        .update({
+          stage: newStage,
+          shortlisted: nextShortlisted,
+        })
+        .eq('id', candidate.id)
+        .eq('user_id', user.id)
+        .select()
+        .single();
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      setCandidates((previous) =>
+        previous.map((item) =>
+          item.id === candidate.id
+            ? data
+            : item
+        )
+      );
+
+      setPipelineCandidate(data);
+    } catch (err) {
+      console.error(
+        'Update candidate stage error:',
+        err
+      );
+
+      setError(
+        err?.message ||
+          'Unable to update candidate stage.'
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  /* ==========================================================================
+     TOGGLE SHORTLIST
+  ========================================================================== */
+
+  const toggleShortlist = async (candidate) => {
+    if (!candidate?.id || !user?.id) {
+      return;
+    }
+
+    setSaving(true);
+    setError('');
+
+    try {
+      const nextValue = !candidate.shortlisted;
+
+      const nextStage = nextValue
+        ? 'shortlisted'
+        : candidate.stage === 'shortlisted'
+        ? 'screening'
+        : candidate.stage || 'sourced';
+
+      const {
+        data,
+        error: updateError,
+      } = await supabase
+        .from('candidates')
+        .update({
+          shortlisted: nextValue,
+          stage: nextStage,
+        })
+        .eq('id', candidate.id)
+        .eq('user_id', user.id)
+        .select()
+        .single();
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      setCandidates((previous) =>
+        previous.map((item) =>
+          item.id === candidate.id
+            ? data
+            : item
+        )
+      );
+
+      setPipelineCandidate(data);
+    } catch (err) {
+      console.error(
+        'Toggle shortlist error:',
+        err
+      );
+
+      setError(
+        err?.message ||
+          'Unable to update shortlist status.'
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  /* ==========================================================================
+     AUTH LOADING
+  ========================================================================== */
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <RefreshCw className="w-8 h-8 animate-spin text-red-600 mx-auto mb-3" />
+
+          <p className="text-gray-600">
+            Loading your workspace...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  /* ==========================================================================
+     NOT LOGGED IN
+  ========================================================================== */
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+        <Card className="max-w-md w-full border-0 shadow-sm">
+          <CardContent className="p-8 text-center">
+            <AlertCircle className="w-10 h-10 text-red-600 mx-auto mb-4" />
+
+            <h2 className="text-xl font-bold mb-2">
+              Login Required
+            </h2>
+
+            <p className="text-gray-500">
+              Please log in to access your jobs.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  /* ==========================================================================
+     MAIN UI
+  ========================================================================== */
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Sidebar isCollapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
-      <main className={`transition-all duration-300 ${sidebarCollapsed ? 'ml-20' : 'ml-64'}`}>
-        <TopBar title="Job Listings" subtitle="Manage open roles, pasted jobs and matching applicants" />
+      <Sidebar
+        isCollapsed={sidebarCollapsed}
+        onToggle={() =>
+          setSidebarCollapsed((previous) => !previous)
+        }
+      />
+
+      <main
+        className={`transition-all duration-300 ${
+          sidebarCollapsed
+            ? 'ml-20'
+            : 'ml-64'
+        }`}
+      >
+        <TopBar
+          title="Jobs"
+          subtitle="Manage your recruitment jobs, candidates and hiring pipeline"
+        />
+
         <div className="p-8">
-          {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
-            {[
-              { label: 'Total Jobs', value: stats.total, icon: Briefcase, color: 'bg-blue-50 text-blue-600' },
-              { label: 'Open Positions', value: stats.open, icon: Circle, color: 'bg-green-50 text-green-600' },
-              { label: 'Pasted Jobs', value: stats.pasted, icon: ClipboardPaste, color: 'bg-red-50 text-red-600' },
-              { label: 'Total Applicants', value: stats.applicants, icon: Users, color: 'bg-purple-50 text-purple-600' },
-              { label: 'Hired', value: stats.hired, icon: UserCheck, color: 'bg-orange-50 text-orange-600' },
-            ].map((stat, i) => (
-              <Card key={i} className="border-0 shadow-sm">
-                <CardContent className="p-4 flex items-center gap-4">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${stat.color}`}>
-                    <stat.icon className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{stat.value}</p>
-                    <p className="text-sm text-gray-500">{stat.label}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+          {/* ------------------------------------------------------------------
+             ERROR
+          ------------------------------------------------------------------ */}
+
+          {error && (
+            <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+
+              <div className="flex-1">
+                <p className="font-semibold text-red-800">
+                  Something went wrong
+                </p>
+
+                <p className="text-sm text-red-700 mt-1">
+                  {error}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setError('')}
+                className="text-red-500 hover:text-red-700"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {/* ------------------------------------------------------------------
+             STATS
+          ------------------------------------------------------------------ */}
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-5 flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <Briefcase className="w-6 h-6" />
+                </div>
+
+                <div>
+                  <p className="text-2xl font-bold">
+                    {stats.total}
+                  </p>
+
+                  <p className="text-sm text-gray-500">
+                    Total Jobs
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-5 flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-green-50 text-green-600 flex items-center justify-center">
+                  <Circle className="w-6 h-6" />
+                </div>
+
+                <div>
+                  <p className="text-2xl font-bold">
+                    {stats.open}
+                  </p>
+
+                  <p className="text-sm text-gray-500">
+                    Active Jobs
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-5 flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                  <Users className="w-6 h-6" />
+                </div>
+
+                <div>
+                  <p className="text-2xl font-bold">
+                    {stats.candidates}
+                  </p>
+
+                  <p className="text-sm text-gray-500">
+                    Candidates
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
           </div>
+
+          {/* ------------------------------------------------------------------
+             CONTENT
+          ------------------------------------------------------------------ */}
 
           <AnimatePresence mode="wait">
             {selectedJob ? (
-              <motion.div key="detail" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+              /* ================================================================
+                 JOB DETAIL
+              ================================================================= */
+              <motion.div
+                key="job-detail"
+                initial={{
+                  opacity: 0,
+                  x: 20,
+                }}
+                animate={{
+                  opacity: 1,
+                  x: 0,
+                }}
+                exit={{
+                  opacity: 0,
+                  x: -20,
+                }}
+                className="space-y-6"
+              >
+                {/* ------------------------------------------------------------
+                   HEADER
+                ------------------------------------------------------------ */}
+
                 <div className="flex items-center justify-between flex-wrap gap-4">
                   <div className="flex items-center gap-4">
-                    <Button variant="outline" size="sm" onClick={() => { setSelectedJob(null); setSelectedApplicant(null); }}>
-                      <ArrowLeft className="w-4 h-4 mr-1" /> Back
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedJob(null);
+                        setShowPipeline(false);
+                      }}
+                    >
+                      <ArrowLeft className="w-4 h-4 mr-1" />
+                      Back
                     </Button>
+
                     <div>
                       <div className="flex items-center gap-3 flex-wrap">
-                        <h2 className="text-2xl font-bold">{selectedJob.title}</h2>
-                        <Badge className={getStatusBadge(selectedJob.status).color}>{getStatusBadge(selectedJob.status).label}</Badge>
-                        {selectedJob.isPasted && (
-                          <Badge className="bg-red-600 text-white font-bold px-3 py-1 text-sm">PASTED JOB</Badge>
-                        )}
+                        <h2 className="text-2xl font-bold">
+                          {selectedJob.title ||
+                            'Untitled Job'}
+                        </h2>
+
+                        <Badge
+                          className={
+                            getStatusBadge('open').color
+                          }
+                        >
+                          Open
+                        </Badge>
                       </div>
-                      <p className="text-gray-500">{selectedJob.clientName} · {selectedJob.location} · {selectedJob.type}</p>
+
+                      <p className="text-gray-500 mt-1 flex items-center gap-1">
+                        <MapPin className="w-4 h-4" />
+
+                        {selectedJob.location ||
+                          'Location not specified'}
+                      </p>
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => openEditJob(selectedJob)}><Edit2 className="w-4 h-4 mr-1" /> Edit</Button>
-                    <Button variant="outline" className="text-red-600" onClick={() => confirmDeleteJob(selectedJob)}><Trash2 className="w-4 h-4 mr-1" /> Delete</Button>
+
+                  <div className="flex gap-2 flex-wrap">
+                    <Button
+                      variant={
+                        showPipeline
+                          ? 'default'
+                          : 'outline'
+                      }
+                      className={
+                        showPipeline
+                          ? 'bg-red-600 hover:bg-red-700'
+                          : ''
+                      }
+                      onClick={() =>
+                        setShowPipeline((previous) => !previous)
+                      }
+                    >
+                      <Users className="w-4 h-4 mr-2" />
+
+                      {showPipeline
+                        ? 'Hide Pipeline'
+                        : 'View Pipeline'}
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        openEditJob(selectedJob)
+                      }
+                    >
+                      <Edit2 className="w-4 h-4 mr-1" />
+                      Edit
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      className="text-red-600 hover:text-red-700"
+                      onClick={() =>
+                        confirmDeleteJob(selectedJob)
+                      }
+                    >
+                      <Trash2 className="w-4 h-4 mr-1" />
+                      Delete
+                    </Button>
                   </div>
                 </div>
 
-                <Tabs value={detailTab} onValueChange={setDetailTab}>
-                  <TabsList className="bg-white border">
-                    <TabsTrigger value="overview" className="data-[state=active]:bg-red-600 data-[state=active]:text-white">Overview</TabsTrigger>
-                    <TabsTrigger value="applications" className="data-[state=active]:bg-red-600 data-[state=active]:text-white">
-                      {selectedJob.isPasted ? 'Matching Applicants' : 'Applicants'} ({selectedJob.applications?.length || 0})
-                    </TabsTrigger>
-                    <TabsTrigger value="description" className="data-[state=active]:bg-red-600 data-[state=active]:text-white">Description</TabsTrigger>
-                    <TabsTrigger value="status" className="data-[state=active]:bg-red-600 data-[state=active]:text-white">Status</TabsTrigger>
-                  </TabsList>
+                {/* ------------------------------------------------------------
+                   JOB DETAILS + PIPELINE SUMMARY
+                ------------------------------------------------------------ */}
 
-                  <TabsContent value="overview" className="mt-6 space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <Card className="border-0 shadow-sm md:col-span-2">
-                        <CardHeader><CardTitle className="text-lg">Job Details</CardTitle></CardHeader>
-                        <CardContent className="grid grid-cols-2 gap-4 text-sm">
-                          <div><p className="text-gray-500">Client</p><p className="font-medium flex items-center gap-1"><Building2 className="w-3.5 h-3.5" /> {selectedJob.clientName}</p></div>
-                          <div><p className="text-gray-500">Location</p><p className="font-medium flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {selectedJob.location}</p></div>
-                          <div><p className="text-gray-500">Type</p><p className="font-medium">{selectedJob.type}</p></div>
-                          <div><p className="text-gray-500">Work Mode</p><p className="font-medium">{selectedJob.workMode}</p></div>
-                          <div><p className="text-gray-500">Salary</p><p className="font-medium">{selectedJob.salary || '—'}</p></div>
-                          <div><p className="text-gray-500">Posted</p><p className="font-medium">{formatRelative(selectedJob.postedAt)}</p></div>
-                          {selectedJob.isPasted && (
-                            <div className="col-span-2"><p className="text-gray-500">Source</p><p className="font-bold text-red-600">Pasted Job Post</p></div>
-                          )}
-                        </CardContent>
-                      </Card>
-                      <Card className="border-0 shadow-sm">
-                        <CardHeader><CardTitle className="text-lg">Pipeline</CardTitle></CardHeader>
-                        <CardContent className="space-y-3">
-                          {(() => {
-                            const c = getAppCounts(selectedJob);
-                            return (
-                              <>
-                                <div className="flex justify-between text-sm"><span className="text-gray-500">Total</span><span className="font-bold">{c.total}</span></div>
-                                <div className="flex justify-between text-sm"><span className="text-teal-600 font-medium">Shortlisted</span><span className="font-bold text-teal-600">{c.shortlisted}</span></div>
-                                {selectedJob.isPasted && <div className="flex justify-between text-sm"><span className="text-red-600 font-medium">Matched</span><span className="font-bold text-red-600">{c.matched}</span></div>}
-                                <div className="flex justify-between text-sm"><span className="text-gray-500">Interview</span><span className="font-medium text-yellow-600">{c.interview}</span></div>
-                                <div className="flex justify-between text-sm"><span className="text-gray-500">Offer</span><span className="font-medium text-orange-600">{c.offer}</span></div>
-                                <div className="flex justify-between text-sm"><span className="text-gray-500">Hired</span><span className="font-medium text-green-600">{c.hired}</span></div>
-                              </>
-                            );
-                          })()}
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </TabsContent>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <Card className="border-0 shadow-sm lg:col-span-2">
+                    <CardHeader>
+                      <CardTitle>
+                        Job Details
+                      </CardTitle>
+                    </CardHeader>
 
-                  <TabsContent value="applications" className="mt-6 space-y-4">
-                    <div className="flex items-center justify-between flex-wrap gap-3">
-                      <div>
-                        <h3 className="font-semibold text-lg">{selectedJob.isPasted ? 'Matching Applicants' : 'Applicants'}</h3>
-                        {selectedJob.isPasted && <p className="text-sm text-red-600 font-medium mt-0.5">Linked to this pasted job post</p>}
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">
+                            Job Title
+                          </p>
+
+                          <p className="font-semibold">
+                            {selectedJob.title || '—'}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">
+                            Location
+                          </p>
+
+                          <p className="font-semibold flex items-center gap-1">
+                            <MapPin className="w-4 h-4 text-gray-400" />
+
+                            {selectedJob.location || '—'}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">
+                            Created
+                          </p>
+
+                          <p className="font-semibold flex items-center gap-1">
+                            <Clock className="w-4 h-4 text-gray-400" />
+
+                            {formatRelative(
+                              selectedJob.created_at
+                            )}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">
+                            Job ID
+                          </p>
+
+                          <p className="font-mono text-xs text-gray-600 break-all">
+                            {selectedJob.id}
+                          </p>
+                        </div>
                       </div>
-                      <Button className="bg-red-600 hover:bg-red-700 gap-2" onClick={() => openAddApp(true)}>
-                        <UserPlus className="w-4 h-4" /> {selectedJob.isPasted ? 'Add Matching Applicant' : 'Add Applicant'}
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-0 shadow-sm">
+                    <CardHeader>
+                      <CardTitle>
+                        Recruitment Pipeline
+                      </CardTitle>
+                    </CardHeader>
+
+                    <CardContent className="space-y-4">
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">
+                          Applicants
+                        </span>
+
+                        <span className="font-bold">
+                          {selectedJobCandidates.length}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">
+                          Shortlisted
+                        </span>
+
+                        <span className="font-bold">
+                          {pipelineCounts.shortlisted}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">
+                          Interviews
+                        </span>
+
+                        <span className="font-bold">
+                          {pipelineCounts.interview}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">
+                          Hired
+                        </span>
+
+                        <span className="font-bold text-green-600">
+                          {pipelineCounts.hired}
+                        </span>
+                      </div>
+
+                      <Button
+                        className="w-full bg-red-600 hover:bg-red-700"
+                        onClick={() =>
+                          openPipeline(selectedJob)
+                        }
+                      >
+                        <Users className="w-4 h-4 mr-2" />
+                        View Pipeline
                       </Button>
-                    </div>
+                    </CardContent>
+                  </Card>
+                </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-7 gap-3">
-                      {APPLICATION_STATUSES.map((s) => {
-                        const count = (selectedJob.applications || []).filter((a) => a.status === s.value).length;
-                        return (
-                          <div key={s.value} className="bg-white rounded-lg border p-3 text-center">
-                            <p className="text-xl font-bold">{count}</p>
-                            <p className="text-xs text-gray-500">{s.label}</p>
-                          </div>
-                        );
-                      })}
-                    </div>
+                {/* ------------------------------------------------------------
+                   DESCRIPTION
+                ------------------------------------------------------------ */}
 
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                      <div className="lg:col-span-2 space-y-3">
-                        {(selectedJob.applications || []).length === 0 && (
-                          <Card className="border-0 shadow-sm">
-                            <CardContent className="p-10 text-center text-gray-400">
-                              No applicants yet. Click “Add Matching Applicant” and paste their full work profile.
-                            </CardContent>
-                          </Card>
-                        )}
-                        {(selectedJob.applications || []).sort((a, b) => new Date(b.appliedAt) - new Date(a.appliedAt)).map((app) => (
-                          <Card
-                            key={app.id}
-                            className={`border-0 shadow-sm cursor-pointer transition-all ${selectedApplicant?.id === app.id ? 'ring-2 ring-red-500' : 'hover:shadow-md'} ${app.linkedToPastedJob ? 'border-l-4 border-l-red-600' : ''}`}
-                            onClick={() => setSelectedApplicant(app)}
-                          >
-                            <CardContent className="p-5">
-                              <div className="flex items-start justify-between gap-4">
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-3 flex-wrap">
-                                    <h4 className="font-semibold text-lg">{app.name}</h4>
-                                    <Badge className={getStatusBadge(app.status, APPLICATION_STATUSES).color}>
-                                      {getStatusBadge(app.status, APPLICATION_STATUSES).label}
-                                    </Badge>
-                                    {app.linkedToPastedJob && (
-                                      <Badge className="bg-red-100 text-red-700 font-bold flex items-center gap-1">
-                                        <Link2 className="w-3 h-3" /> Matched
-                                      </Badge>
-                                    )}
-                                    {app.profileText && <Badge variant="outline" className="text-teal-700 border-teal-300">Profile</Badge>}
-                                    {app.cvFileName && <Badge variant="outline" className="flex items-center gap-1"><File className="w-3 h-3" /> CV</Badge>}
-                                  </div>
-                                  <div className="flex items-center gap-4 mt-2 text-sm text-gray-500 flex-wrap">
-                                    <span className="flex items-center gap-1"><Mail className="w-3.5 h-3.5" /> {app.email || '—'}</span>
-                                    {app.phone && <span className="flex items-center gap-1"><Phone className="w-3.5 h-3.5" /> {app.phone}</span>}
-                                    <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {formatRelative(app.appliedAt)}</span>
-                                  </div>
-                                </div>
-                                <div className="flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
-                                  <Select value={app.status} onValueChange={(v) => updateAppStatus(app.id, v)}>
-                                    <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                      {APPLICATION_STATUSES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-                                    </SelectContent>
-                                  </Select>
-                                  <div className="flex gap-1">
-                                    <Button size="sm" variant="outline" onClick={() => openEditApp(app)}><Edit2 className="w-3.5 h-3.5" /></Button>
-                                    <Button size="sm" variant="outline" className="text-red-600" onClick={() => deleteApplication(app.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
-                                  </div>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
+                <Card className="border-0 shadow-sm">
+                  <CardHeader>
+                    <CardTitle>
+                      Job Description
+                    </CardTitle>
+                  </CardHeader>
+
+                  <CardContent>
+                    {selectedJob.description ? (
+                      <div className="flex gap-3">
+                        <FileText className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
+
+                        <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">
+                          {selectedJob.description}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-gray-400">
+                        No job description has been added yet.
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* ------------------------------------------------------------
+                   PIPELINE
+                ------------------------------------------------------------ */}
+
+                {showPipeline && (
+                  <motion.div
+                    initial={{
+                      opacity: 0,
+                      y: 15,
+                    }}
+                    animate={{
+                      opacity: 1,
+                      y: 0,
+                    }}
+                    className="space-y-5"
+                  >
+                    <div className="flex items-center justify-between flex-wrap gap-4">
+                      <div>
+                        <h3 className="text-xl font-bold">
+                          Candidate Pipeline
+                        </h3>
+
+                        <p className="text-sm text-gray-500">
+                          Candidates linked to this specific job.
+                        </p>
                       </div>
 
-                      {/* Full Applicant Profile Panel */}
-                      <div>
-                        {selectedApplicant ? (
-                          <Card className="border-0 shadow-sm sticky top-6">
-                            <CardHeader className="pb-3">
-                              <div className="flex items-start justify-between">
-                                <CardTitle className="text-lg">Applicant Profile</CardTitle>
-                                <Button size="sm" variant="ghost" onClick={() => setSelectedApplicant(null)}><X className="w-4 h-4" /></Button>
-                              </div>
-                            </CardHeader>
-                            <CardContent className="space-y-4 text-sm">
-                              <div>
-                                <p className="text-2xl font-bold">{selectedApplicant.name}</p>
-                                <Badge className={getStatusBadge(selectedApplicant.status, APPLICATION_STATUSES).color + ' mt-1'}>
-                                  {getStatusBadge(selectedApplicant.status, APPLICATION_STATUSES).label}
-                                </Badge>
-                              </div>
-                              <div className="space-y-2">
-                                <div className="flex items-center gap-2"><Mail className="w-4 h-4 text-gray-400" /><span>{selectedApplicant.email || '—'}</span></div>
-                                <div className="flex items-center gap-2"><Phone className="w-4 h-4 text-gray-400" /><span>{selectedApplicant.phone || '—'}</span></div>
-                                <div className="flex items-center gap-2"><Clock className="w-4 h-4 text-gray-400" /><span>Added {formatRelative(selectedApplicant.appliedAt)}</span></div>
-                                <div><p className="text-gray-500 text-xs">Source</p><p className="font-medium">{selectedApplicant.source}</p></div>
-                              </div>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
 
-                              {selectedApplicant.linkedToPastedJob && (
-                                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                                  <p className="font-bold text-red-700 flex items-center gap-1"><Link2 className="w-4 h-4" /> Clearly linked to pasted job</p>
-                                  <p className="text-xs text-red-600 mt-1">{selectedJob.title}</p>
+                        <Input
+                          placeholder="Search candidates..."
+                          value={pipelineSearch}
+                          onChange={(event) =>
+                            setPipelineSearch(
+                              event.target.value
+                            )
+                          }
+                          className="pl-10 w-64 bg-white"
+                        />
+                      </div>
+                    </div>
+
+                    {candidatesLoading ? (
+                      <Card className="border-0 shadow-sm">
+                        <CardContent className="p-10 text-center">
+                          <RefreshCw className="w-7 h-7 animate-spin text-red-600 mx-auto mb-3" />
+
+                          <p className="text-gray-500">
+                            Loading candidates...
+                          </p>
+                        </CardContent>
+                      </Card>
+                    ) : selectedJobCandidates.length === 0 ? (
+                      <Card className="border-0 shadow-sm">
+                        <CardContent className="p-10 text-center">
+                          <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+
+                          <h3 className="text-lg font-semibold text-gray-700">
+                            No candidates linked to this job yet
+                          </h3>
+
+                          <p className="text-gray-500 mt-2 max-w-xl mx-auto">
+                            This job has been posted successfully.
+                            Candidates will appear here when their{' '}
+                            <code className="bg-gray-100 px-1.5 py-0.5 rounded">
+                              job_id
+                            </code>{' '}
+                            is set to this job's ID.
+                          </p>
+
+                          <div className="mt-5 bg-blue-50 border border-blue-100 rounded-lg p-4 text-left max-w-2xl mx-auto">
+                            <p className="text-sm font-semibold text-blue-800">
+                              Job ID
+                            </p>
+
+                            <p className="text-xs font-mono text-blue-700 break-all mt-1">
+                              {selectedJob.id}
+                            </p>
+
+                            <p className="text-xs text-blue-600 mt-2">
+                              Your candidate upload/import flow should
+                              save this value into candidates.job_id.
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ) : pipelineFilteredCandidates.length === 0 ? (
+                      <Card className="border-0 shadow-sm">
+                        <CardContent className="p-10 text-center">
+                          <Search className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+
+                          <h3 className="font-semibold text-gray-700">
+                            No candidates found
+                          </h3>
+
+                          <p className="text-sm text-gray-500 mt-1">
+                            Try a different candidate search.
+                          </p>
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                        {CANDIDATE_STAGES.map((stage) => {
+                          const StageIcon = stage.icon;
+
+                          const stageCandidates =
+                            pipelineFilteredCandidates.filter(
+                              (candidate) =>
+                                (candidate.stage || 'sourced') ===
+                                stage.value
+                            );
+
+                          return (
+                            <Card
+                              key={stage.value}
+                              className="border-0 shadow-sm bg-white"
+                            >
+                              <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <div
+                                      className={`w-8 h-8 rounded-lg flex items-center justify-center ${stage.color}`}
+                                    >
+                                      <StageIcon className="w-4 h-4" />
+                                    </div>
+
+                                    <CardTitle className="text-sm">
+                                      {stage.label}
+                                    </CardTitle>
+                                  </div>
+
+                                  <Badge variant="secondary">
+                                    {stageCandidates.length}
+                                  </Badge>
                                 </div>
-                              )}
+                              </CardHeader>
 
-                              {/* Pasted Work Profile */}
-                              {selectedApplicant.profileText && (
-                                <div>
-                                  <p className="text-xs mb-1 font-semibold text-red-700">Work Profile (Pasted)</p>
-                                  <div className="bg-red-50 border border-red-100 rounded-lg p-3 max-h-64 overflow-y-auto">
-                                    <p className="text-sm text-gray-800 whitespace-pre-wrap font-mono leading-relaxed">
-                                      {selectedApplicant.profileText}
+                              <CardContent className="space-y-3">
+                                {stageCandidates.length === 0 ? (
+                                  <div className="border border-dashed rounded-lg p-5 text-center">
+                                    <p className="text-xs text-gray-400">
+                                      No candidates
                                     </p>
                                   </div>
-                                </div>
-                              )}
-
-                              {selectedApplicant.notes && (
-                                <div>
-                                  <p className="text-gray-500 text-xs mb-1">Internal Notes</p>
-                                  <p className="bg-gray-50 rounded-lg p-3">{selectedApplicant.notes}</p>
-                                </div>
-                              )}
-
-                              <div>
-                                <p className="text-gray-500 text-xs mb-2">Curriculum Vitae</p>
-                                {selectedApplicant.cvFileName ? (
-                                  <div className="bg-gray-50 rounded-lg p-3 flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                      <FileText className="w-5 h-5 text-red-600" />
-                                      <span className="font-medium truncate max-w-[140px]">{selectedApplicant.cvFileName}</span>
-                                    </div>
-                                    {selectedApplicant.cvData && (
-                                      <a href={selectedApplicant.cvData} download={selectedApplicant.cvFileName} className="text-red-600 text-xs font-medium hover:underline" onClick={(e) => e.stopPropagation()}>
-                                        Download
-                                      </a>
-                                    )}
-                                  </div>
                                 ) : (
-                                  <p className="text-gray-400 text-sm">No CV uploaded — profile used instead</p>
-                                )}
-                              </div>
+                                  stageCandidates.map((candidate) => (
+                                    <motion.div
+                                      key={candidate.id}
+                                      layout
+                                      className="border rounded-xl p-4 hover:shadow-sm transition-shadow bg-white"
+                                    >
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setPipelineCandidate(candidate)
+                                        }
+                                        className="w-full text-left"
+                                      >
+                                        <div className="flex items-start gap-3">
+                                          <div className="w-10 h-10 rounded-full bg-red-50 text-red-600 flex items-center justify-center flex-shrink-0">
+                                            <Users className="w-5 h-5" />
+                                          </div>
 
-                              <div className="flex flex-col gap-2 pt-2">
-                                <Button variant="outline" size="sm" onClick={() => openEditApp(selectedApplicant)}>
-                                  <Edit2 className="w-3.5 h-3.5 mr-1" /> Edit Profile
-                                </Button>
-                                {selectedJob.isPasted && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className={selectedApplicant.linkedToPastedJob ? 'text-red-600' : ''}
-                                    onClick={() => toggleLinkToPasted(selectedApplicant.id)}
-                                  >
-                                    <Link2 className="w-3.5 h-3.5 mr-1" />
-                                    {selectedApplicant.linkedToPastedJob ? 'Unlink from Pasted Job' : 'Link to Pasted Job'}
-                                  </Button>
+                                          <div className="min-w-0 flex-1">
+                                            <p className="font-semibold truncate">
+                                              {candidate.name ||
+                                                'Unnamed Candidate'}
+                                            </p>
+
+                                            <p className="text-xs text-gray-500 truncate mt-1">
+                                              {candidate.title ||
+                                                'Candidate'}
+                                            </p>
+
+                                            {candidate.location && (
+                                              <p className="text-xs text-gray-400 truncate mt-1">
+                                                {candidate.location}
+                                              </p>
+                                            )}
+                                          </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-between mt-3">
+                                          <span className="text-xs text-gray-500">
+                                            Match
+                                          </span>
+
+                                          <span className="text-xs font-semibold">
+                                            {candidate.match_score ?? 0}%
+                                          </span>
+                                        </div>
+                                      </button>
+
+                                      <div className="mt-3">
+                                        <Select
+                                          value={
+                                            candidate.stage ||
+                                            'sourced'
+                                          }
+                                          onValueChange={(value) =>
+                                            updateCandidateStage(
+                                              candidate,
+                                              value
+                                            )
+                                          }
+                                          disabled={saving}
+                                        >
+                                          <SelectTrigger className="h-8 text-xs">
+                                            <SelectValue />
+                                          </SelectTrigger>
+
+                                          <SelectContent>
+                                            {CANDIDATE_STAGES.map(
+                                              (option) => (
+                                                <SelectItem
+                                                  key={option.value}
+                                                  value={option.value}
+                                                >
+                                                  {option.label}
+                                                </SelectItem>
+                                              )
+                                            )}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                    </motion.div>
+                                  ))
                                 )}
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ) : (
-                          <Card className="border-0 shadow-sm">
-                            <CardContent className="p-8 text-center text-gray-400">
-                              <Users className="w-10 h-10 mx-auto mb-3 opacity-40" />
-                              <p>Select an applicant to view full profile & pasted work history</p>
-                            </CardContent>
-                          </Card>
-                        )}
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
                       </div>
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="description" className="mt-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <Card className="border-0 shadow-sm">
-                        <CardHeader>
-                          <CardTitle className="text-lg">
-                            {selectedJob.isPasted ? <span className="text-red-600 font-bold">Pasted Job Description</span> : 'Job Description'}
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <p className="text-sm text-gray-700 whitespace-pre-wrap">{selectedJob.description || 'No description provided.'}</p>
-                        </CardContent>
-                      </Card>
-                      <Card className="border-0 shadow-sm">
-                        <CardHeader><CardTitle className="text-lg">Requirements</CardTitle></CardHeader>
-                        <CardContent>
-                          <p className="text-sm text-gray-700 whitespace-pre-wrap">{selectedJob.requirements || 'No requirements listed.'}</p>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="status" className="mt-6">
-                    <Card className="border-0 shadow-sm">
-                      <CardHeader><CardTitle className="text-lg">Update Job Status</CardTitle></CardHeader>
-                      <CardContent>
-                        <div className="flex flex-wrap gap-3">
-                          {JOB_STATUSES.map((s) => (
-                            <Button
-                              key={s.value}
-                              variant={selectedJob.status === s.value ? 'default' : 'outline'}
-                              className={selectedJob.status === s.value ? 'bg-red-600 hover:bg-red-700' : ''}
-                              onClick={() => updateJobStatus(selectedJob.id, s.value)}
-                            >
-                              {s.label}
-                            </Button>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </TabsContent>
-                </Tabs>
+                    )}
+                  </motion.div>
+                )}
               </motion.div>
             ) : (
-              <motion.div key="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+              /* ================================================================
+                 JOB LIST
+              ================================================================= */
+              <motion.div
+                key="job-list"
+                initial={{
+                  opacity: 0,
+                }}
+                animate={{
+                  opacity: 1,
+                }}
+              >
+                {/* ------------------------------------------------------------
+                   SEARCH / FILTERS / ACTIONS
+                ------------------------------------------------------------ */}
+
                 <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
                   <div className="flex items-center gap-3 flex-wrap">
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <Input placeholder="Search jobs..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10 w-64 bg-white border-gray-200" />
+
+                      <Input
+                        placeholder="Search jobs..."
+                        value={search}
+                        onChange={(event) =>
+                          setSearch(event.target.value)
+                        }
+                        className="pl-10 w-64 bg-white"
+                      />
                     </div>
-                    <Select value={statusFilter} onValueChange={setStatusFilter}>
-                      <SelectTrigger className="w-36 bg-white"><SelectValue placeholder="Status" /></SelectTrigger>
+
+                    <Select
+                      value={statusFilter}
+                      onValueChange={setStatusFilter}
+                    >
+                      <SelectTrigger className="w-36 bg-white">
+                        <SelectValue />
+                      </SelectTrigger>
+
                       <SelectContent>
-                        <SelectItem value="all">All Status</SelectItem>
-                        {JOB_STATUSES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                        <SelectItem value="all">
+                          All Status
+                        </SelectItem>
+
+                        <SelectItem value="open">
+                          Open
+                        </SelectItem>
                       </SelectContent>
                     </Select>
-                    <Select value={typeFilter} onValueChange={setTypeFilter}>
-                      <SelectTrigger className="w-36 bg-white"><SelectValue placeholder="Type" /></SelectTrigger>
+
+                    <Select
+                      value={locationFilter}
+                      onValueChange={setLocationFilter}
+                    >
+                      <SelectTrigger className="w-40 bg-white">
+                        <SelectValue />
+                      </SelectTrigger>
+
                       <SelectContent>
-                        <SelectItem value="all">All Types</SelectItem>
-                        {JOB_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                        <SelectItem value="all">
+                          All Locations
+                        </SelectItem>
+
+                        {LOCATIONS.map((location) => (
+                          <SelectItem
+                            key={location}
+                            value={location}
+                          >
+                            {location}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
-                    <Select value={locationFilter} onValueChange={setLocationFilter}>
-                      <SelectTrigger className="w-36 bg-white"><SelectValue placeholder="Location" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Locations</SelectItem>
-                        {LOCATIONS.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" className="gap-2 border-red-300 text-red-700 hover:bg-red-50" onClick={() => setIsPasteOpen(true)}>
-                      <ClipboardPaste className="w-4 h-4" /> Paste Job Post
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        loadJobs();
+                        loadCandidates();
+                      }}
+                      disabled={loading || candidatesLoading}
+                    >
+                      <RefreshCw
+                        className={`w-4 h-4 mr-1 ${
+                          loading || candidatesLoading
+                            ? 'animate-spin'
+                            : ''
+                        }`}
+                      />
+
+                      Refresh
                     </Button>
-                    <Button className="bg-red-600 hover:bg-red-700 text-white gap-2" onClick={openAddJob}>
-                      <Plus className="w-4 h-4" /> Add Job
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        setIsPasteOpen(true)
+                      }
+                      className="gap-2 border-red-300 text-red-700 hover:bg-red-50"
+                    >
+                      <ClipboardPaste className="w-4 h-4" />
+                      Paste Job
+                    </Button>
+
+                    <Button
+                      className="bg-red-600 hover:bg-red-700 text-white gap-2"
+                      onClick={openAddJob}
+                    >
+                      <Plus className="w-4 h-4" />
+                      Post Job
                     </Button>
                   </div>
                 </div>
 
-                <div className="space-y-4">
-                  {filteredJobs.length === 0 && (
+                {/* ------------------------------------------------------------
+                   LOADING
+                ------------------------------------------------------------ */}
+
+                {loading && (
+                  <Card className="border-0 shadow-sm">
+                    <CardContent className="p-12 text-center">
+                      <RefreshCw className="w-8 h-8 animate-spin text-red-600 mx-auto mb-3" />
+
+                      <p className="text-gray-500">
+                        Loading your jobs...
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* ------------------------------------------------------------
+                   EMPTY
+                ------------------------------------------------------------ */}
+
+                {!loading &&
+                  filteredJobs.length === 0 && (
                     <Card className="border-0 shadow-sm">
-                      <CardContent className="p-12 text-center text-gray-400">No jobs found. Try adjusting filters, add a job, or paste a job post.</CardContent>
+                      <CardContent className="p-12 text-center">
+                        <Briefcase className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+
+                        <h3 className="font-semibold text-lg text-gray-700">
+                          {jobs.length === 0
+                            ? 'No jobs posted yet'
+                            : 'No jobs found'}
+                        </h3>
+
+                        <p className="text-gray-400 mt-1 mb-5">
+                          {jobs.length === 0
+                            ? 'Post your first job to start building a candidate pipeline.'
+                            : 'Try adjusting your search or filters.'}
+                        </p>
+
+                        {jobs.length === 0 && (
+                          <Button
+                            className="bg-red-600 hover:bg-red-700"
+                            onClick={openAddJob}
+                          >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Post Your First Job
+                          </Button>
+                        )}
+                      </CardContent>
                     </Card>
                   )}
-                  {filteredJobs.map((job, i) => {
-                    const appCount = job.applications?.length || 0;
-                    const hiredCount = job.applications?.filter((a) => a.status === 'hired').length || 0;
-                    const matchedCount = job.applications?.filter((a) => a.linkedToPastedJob).length || 0;
-                    return (
-                      <motion.div key={job.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
-                        <Card className={`border-0 shadow-sm hover:shadow-lg transition-all cursor-pointer ${job.isPasted ? 'border-l-4 border-l-red-600' : ''}`}>
-                          <CardContent className="p-6" onClick={() => setSelectedJob(job)}>
-                            <div className="flex items-start gap-6">
-                              <div className={`w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 ${job.isPasted ? 'bg-red-100' : 'bg-red-50'}`}>
-                                {job.isPasted ? <ClipboardPaste className="w-7 h-7 text-red-600" /> : <Briefcase className="w-7 h-7 text-red-600" />}
-                              </div>
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <h3 className={`text-xl font-bold ${job.isPasted ? 'text-red-700' : ''}`}>{job.title}</h3>
-                                  <Badge className={getStatusBadge(job.status).color}>{getStatusBadge(job.status).label}</Badge>
-                                  {job.isPasted && <Badge className="bg-red-600 text-white font-bold">PASTED JOB</Badge>}
-                                </div>
-                                <p className="text-gray-500 mt-1 flex items-center gap-2"><Building2 className="w-4 h-4" />{job.clientName}</p>
-                                <div className="flex items-center gap-4 mt-2 text-sm text-gray-500 flex-wrap">
-                                  <span className="flex items-center gap-1"><MapPin className="w-4 h-4" /> {job.location}</span>
-                                  <span>{job.type}</span>
-                                  <span>{job.workMode}</span>
-                                  {job.salary && <span className="flex items-center gap-1"><DollarSign className="w-4 h-4" /> {job.salary}</span>}
-                                </div>
-                                <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-4">
-                                  <div className="bg-gray-50 rounded-lg p-3 text-center">
-                                    <p className="text-2xl font-bold text-purple-600">{appCount}</p>
-                                    <p className="text-xs text-gray-500">Applicants</p>
+
+                {/* ------------------------------------------------------------
+                   JOB CARDS
+                ------------------------------------------------------------ */}
+
+                {!loading &&
+                  filteredJobs.length > 0 && (
+                    <div className="space-y-4">
+                      {filteredJobs.map((job, index) => {
+                        const counts =
+                          candidateCountsByJob[job.id] || {
+                            total: 0,
+                            shortlisted: 0,
+                            interview: 0,
+                            hired: 0,
+                          };
+
+                        return (
+                          <motion.div
+                            key={job.id}
+                            initial={{
+                              opacity: 0,
+                              y: 15,
+                            }}
+                            animate={{
+                              opacity: 1,
+                              y: 0,
+                            }}
+                            transition={{
+                              delay: index * 0.03,
+                            }}
+                          >
+                            <Card className="border-0 shadow-sm hover:shadow-md transition-shadow">
+                              <CardContent className="p-6">
+                                <div className="flex items-start gap-5">
+                                  <div className="w-14 h-14 rounded-xl bg-red-50 text-red-600 flex items-center justify-center flex-shrink-0">
+                                    <Briefcase className="w-7 h-7" />
                                   </div>
-                                  {job.isPasted ? (
-                                    <div className="bg-red-50 rounded-lg p-3 text-center">
-                                      <p className="text-2xl font-bold text-red-600">{matchedCount}</p>
-                                      <p className="text-xs text-red-600 font-medium">Matched</p>
+
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <h3 className="text-xl font-bold">
+                                        {job.title ||
+                                          'Untitled Job'}
+                                      </h3>
+
+                                      <Badge
+                                        className={
+                                          getStatusBadge(
+                                            'open'
+                                          ).color
+                                        }
+                                      >
+                                        Open
+                                      </Badge>
                                     </div>
-                                  ) : (
-                                    <div className="bg-gray-50 rounded-lg p-3 text-center">
-                                      <p className="text-2xl font-bold text-green-600">{hiredCount}</p>
-                                      <p className="text-xs text-gray-500">Hired</p>
+
+                                    <div className="flex items-center gap-4 mt-2 text-sm text-gray-500 flex-wrap">
+                                      <span className="flex items-center gap-1">
+                                        <MapPin className="w-4 h-4" />
+
+                                        {job.location ||
+                                          'Location not specified'}
+                                      </span>
+
+                                      <span className="flex items-center gap-1">
+                                        <Clock className="w-4 h-4" />
+
+                                        {formatRelative(
+                                          job.created_at
+                                        )}
+                                      </span>
                                     </div>
-                                  )}
-                                  <div className="bg-gray-50 rounded-lg p-3 text-center">
-                                    <p className="text-sm font-medium text-gray-600">{formatRelative(job.postedAt)}</p>
-                                    <p className="text-xs text-gray-500">Posted</p>
+
+                                    {job.description && (
+                                      <p className="text-sm text-gray-600 mt-4 line-clamp-2">
+                                        {job.description}
+                                      </p>
+                                    )}
+
+                                    {/* Candidate statistics */}
+                                    <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-3">
+                                      <div className="bg-gray-50 rounded-lg p-3">
+                                        <p className="text-lg font-bold">
+                                          {counts.total}
+                                        </p>
+
+                                        <p className="text-xs text-gray-500">
+                                          Candidates
+                                        </p>
+                                      </div>
+
+                                      <div className="bg-purple-50 rounded-lg p-3">
+                                        <p className="text-lg font-bold">
+                                          {counts.shortlisted}
+                                        </p>
+
+                                        <p className="text-xs text-gray-500">
+                                          Shortlisted
+                                        </p>
+                                      </div>
+
+                                      <div className="bg-yellow-50 rounded-lg p-3">
+                                        <p className="text-lg font-bold">
+                                          {counts.interview}
+                                        </p>
+
+                                        <p className="text-xs text-gray-500">
+                                          Interviews
+                                        </p>
+                                      </div>
+
+                                      <div className="bg-green-50 rounded-lg p-3">
+                                        <p className="text-lg font-bold text-green-700">
+                                          {counts.hired}
+                                        </p>
+
+                                        <p className="text-xs text-gray-500">
+                                          Hired
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    {/* No candidates warning */}
+                                    {counts.total === 0 && (
+                                      <div className="mt-4 bg-blue-50 border border-blue-100 rounded-lg p-3">
+                                        <p className="text-sm font-medium text-blue-800">
+                                          Job posted — no candidates
+                                          linked yet.
+                                        </p>
+
+                                        <p className="text-xs text-blue-600 mt-1">
+                                          Link candidates to this job
+                                          using the candidate's{' '}
+                                          <code className="font-mono">
+                                            job_id
+                                          </code>
+                                          .
+                                        </p>
+                                      </div>
+                                    )}
                                   </div>
-                                  <div className="bg-gray-50 rounded-lg p-3 text-center">
-                                    <p className="text-sm font-medium text-gray-600">{job.workMode}</p>
-                                    <p className="text-xs text-gray-500">Work Mode</p>
+
+                                  <div
+                                    className="flex flex-col gap-2"
+                                    onClick={(event) =>
+                                      event.stopPropagation()
+                                    }
+                                  >
+                                    <Button
+                                      size="sm"
+                                      className="bg-red-600 hover:bg-red-700 text-white gap-1"
+                                      onClick={() =>
+                                        setSelectedJob(job)
+                                      }
+                                    >
+                                      View
+                                      <ChevronRight className="w-4 h-4" />
+                                    </Button>
+
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() =>
+                                        openPipeline(job)
+                                      }
+                                    >
+                                      <Users className="w-4 h-4 mr-1" />
+                                      Pipeline
+                                    </Button>
+
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger
+                                        asChild
+                                      >
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                        >
+                                          <MoreVertical className="w-4 h-4" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+
+                                      <DropdownMenuContent align="end">
+                                        <DropdownMenuItem
+                                          onClick={() =>
+                                            setSelectedJob(job)
+                                          }
+                                        >
+                                          View Details
+                                        </DropdownMenuItem>
+
+                                        <DropdownMenuItem
+                                          onClick={() =>
+                                            openPipeline(job)
+                                          }
+                                        >
+                                          View Pipeline
+                                        </DropdownMenuItem>
+
+                                        <DropdownMenuItem
+                                          onClick={() =>
+                                            openEditJob(job)
+                                          }
+                                        >
+                                          Edit Job
+                                        </DropdownMenuItem>
+
+                                        <DropdownMenuSeparator />
+
+                                        <DropdownMenuItem
+                                          className="text-red-600"
+                                          onClick={() =>
+                                            confirmDeleteJob(job)
+                                          }
+                                        >
+                                          Delete Job
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
                                   </div>
                                 </div>
-                              </div>
-                              <div className="flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
-                                <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white gap-1" onClick={() => setSelectedJob(job)}>
-                                  View <ChevronRight className="w-4 h-4" />
-                                </Button>
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button size="sm" variant="outline"><MoreVertical className="w-4 h-4" /></Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={() => setSelectedJob(job)}>View Details</DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => openEditJob(job)}>Edit Job</DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem className="text-red-600" onClick={() => confirmDeleteJob(job)}>Delete Job</DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </motion.div>
-                    );
-                  })}
-                </div>
+                              </CardContent>
+                            </Card>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  )}
               </motion.div>
             )}
           </AnimatePresence>
         </div>
       </main>
 
-      {/* Paste Job Post Dialog */}
-      <Dialog open={isPasteOpen} onOpenChange={setIsPasteOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-red-700">
-              <ClipboardPaste className="w-5 h-5" /> Paste Job Post
-            </DialogTitle>
-            <DialogDescription>
-              Paste the full job advert. It will be marked with a <strong className="text-red-600">bold red PASTED JOB</strong> label.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <Textarea
-              value={pasteText}
-              onChange={(e) => setPasteText(e.target.value)}
-              placeholder="Paste the full job post here..."
-              className="min-h-[280px] font-mono text-sm"
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setIsPasteOpen(false); setPasteText(''); }}>Cancel</Button>
-            <Button className="bg-red-600 hover:bg-red-700 font-bold" onClick={handlePasteJob} disabled={!pasteText.trim()}>
-              Create Pasted Job
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* =========================================================================
+         CANDIDATE DETAIL DIALOG
+      ========================================================================= */}
 
-      {/* Add / Edit Job Dialog */}
-      <Dialog open={isAddOpen || isEditOpen} onOpenChange={(open) => { if (!open) { setIsAddOpen(false); setIsEditOpen(false); } }}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{isEditOpen ? 'Edit Job' : 'Add New Job'}</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label>Job Title *</Label>
-              <Input value={jobForm.title} onChange={(e) => setJobForm({ ...jobForm, title: e.target.value })} placeholder="e.g. Senior Frontend Developer" />
-            </div>
-            <div className="grid gap-2">
-              <Label>Client / Company *</Label>
-              <Input value={jobForm.clientName} onChange={(e) => setJobForm({ ...jobForm, clientName: e.target.value })} placeholder="Company name" />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label>Location</Label>
-                <Select value={jobForm.location} onValueChange={(v) => setJobForm({ ...jobForm, location: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{LOCATIONS.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label>Employment Type</Label>
-                <Select value={jobForm.type} onValueChange={(v) => setJobForm({ ...jobForm, type: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{JOB_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label>Work Mode</Label>
-                <Select value={jobForm.workMode} onValueChange={(v) => setJobForm({ ...jobForm, workMode: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{WORK_MODES.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label>Status</Label>
-                <Select value={jobForm.status} onValueChange={(v) => setJobForm({ ...jobForm, status: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{JOB_STATUSES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <Label>Salary Range</Label>
-              <Input value={jobForm.salary} onChange={(e) => setJobForm({ ...jobForm, salary: e.target.value })} placeholder="e.g. R45,000 - R60,000" />
-            </div>
-            <div className="grid gap-2">
-              <Label>Job Description</Label>
-              <Textarea value={jobForm.description} onChange={(e) => setJobForm({ ...jobForm, description: e.target.value })} className="min-h-[80px]" />
-            </div>
-            <div className="grid gap-2">
-              <Label>Requirements</Label>
-              <Textarea value={jobForm.requirements} onChange={(e) => setJobForm({ ...jobForm, requirements: e.target.value })} className="min-h-[80px]" />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setIsAddOpen(false); setIsEditOpen(false); }}>Cancel</Button>
-            <Button className="bg-red-600 hover:bg-red-700" onClick={saveJob}>{isEditOpen ? 'Save Changes' : 'Add Job'}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <Dialog
+        open={!!pipelineCandidate}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPipelineCandidate(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl">
+          {pipelineCandidate && (
+            <>
+              <DialogHeader>
+                <DialogTitle>
+                  {pipelineCandidate.name ||
+                    'Candidate'}
+                </DialogTitle>
 
-      {/* Add / Edit Applicant – with Paste Work Profile */}
-      <Dialog open={isAppOpen} onOpenChange={setIsAppOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {editingApp ? 'Edit Applicant' : selectedJob?.isPasted ? 'Add Matching Applicant' : 'Add Applicant'}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label>Full Name *</Label>
-              <Input value={appForm.name} onChange={(e) => setAppForm({ ...appForm, name: e.target.value })} placeholder="Candidate name" />
-            </div>
-            <div className="grid gap-2">
-              <Label>Email</Label>
-              <Input type="email" value={appForm.email} onChange={(e) => setAppForm({ ...appForm, email: e.target.value })} />
-            </div>
-            <div className="grid gap-2">
-              <Label>Phone</Label>
-              <Input value={appForm.phone} onChange={(e) => setAppForm({ ...appForm, phone: e.target.value })} />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label>Status</Label>
-                <Select value={appForm.status} onValueChange={(v) => setAppForm({ ...appForm, status: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <DialogDescription>
+                  {pipelineCandidate.title ||
+                    'Candidate profile'}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 py-4">
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">
+                    Current Stage
+                  </p>
+
+                  <Badge
+                    className={
+                      getStage(
+                        pipelineCandidate.stage
+                      ).color
+                    }
+                  >
+                    {
+                      getStage(
+                        pipelineCandidate.stage
+                      ).label
+                    }
+                  </Badge>
+                </div>
+
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">
+                    Match Score
+                  </p>
+
+                  <p className="font-semibold">
+                    {pipelineCandidate.match_score ?? 0}%
+                  </p>
+                </div>
+
+                {pipelineCandidate.email && (
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">
+                      Email
+                    </p>
+
+                    <p className="font-medium break-all">
+                      {pipelineCandidate.email}
+                    </p>
+                  </div>
+                )}
+
+                {pipelineCandidate.phone && (
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">
+                      Phone
+                    </p>
+
+                    <p className="font-medium">
+                      {pipelineCandidate.phone}
+                    </p>
+                  </div>
+                )}
+
+                {pipelineCandidate.location && (
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">
+                      Location
+                    </p>
+
+                    <p className="font-medium">
+                      {pipelineCandidate.location}
+                    </p>
+                  </div>
+                )}
+
+                {pipelineCandidate.experience_years !==
+                  null &&
+                  pipelineCandidate.experience_years !==
+                    undefined && (
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">
+                        Experience
+                      </p>
+
+                      <p className="font-medium">
+                        {pipelineCandidate.experience_years}{' '}
+                        years
+                      </p>
+                    </div>
+                  )}
+
+                {pipelineCandidate.education && (
+                  <div className="md:col-span-2">
+                    <p className="text-xs text-gray-500 mb-1">
+                      Education
+                    </p>
+
+                    <p className="font-medium whitespace-pre-wrap">
+                      {pipelineCandidate.education}
+                    </p>
+                  </div>
+                )}
+
+                {Array.isArray(
+                  pipelineCandidate.skills
+                ) &&
+                  pipelineCandidate.skills.length > 0 && (
+                    <div className="md:col-span-2">
+                      <p className="text-xs text-gray-500 mb-2">
+                        Skills
+                      </p>
+
+                      <div className="flex flex-wrap gap-2">
+                        {pipelineCandidate.skills.map(
+                          (skill, index) => (
+                            <Badge
+                              key={`${skill}-${index}`}
+                              variant="secondary"
+                            >
+                              {skill}
+                            </Badge>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  )}
+              </div>
+
+              <div className="border-t pt-5">
+                <Label className="mb-2 block">
+                  Move Candidate
+                </Label>
+
+                <Select
+                  value={
+                    pipelineCandidate.stage ||
+                    'sourced'
+                  }
+                  onValueChange={(value) =>
+                    updateCandidateStage(
+                      pipelineCandidate,
+                      value
+                    )
+                  }
+                  disabled={saving}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+
                   <SelectContent>
-                    {APPLICATION_STATUSES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                    {CANDIDATE_STAGES.map((stage) => (
+                      <SelectItem
+                        key={stage.value}
+                        value={stage.value}
+                      >
+                        {stage.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid gap-2">
-                <Label>Source</Label>
-                <Select value={appForm.source} onValueChange={(v) => setAppForm({ ...appForm, source: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{SOURCES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-            </div>
 
-            {/* MAIN FEATURE: Paste Full Work Profile */}
-            <div className="grid gap-2">
-              <Label className="font-semibold text-red-700">Paste Full Work Profile</Label>
-              <p className="text-xs text-gray-500 -mt-1">
-                This is the main way to add candidates. Paste the entire profile / experience here.
-              </p>
-              <Textarea
-                value={appForm.profileText || ''}
-                onChange={(e) => setAppForm({ ...appForm, profileText: e.target.value })}
-                placeholder={`Paste the full work profile here...\n\nExample:\nThabo Molefe\nSenior Credit Controller\n\nExperience:\n- 8 years at ABC Properties\n- Managed 450+ tenant portfolio\n- Reduced arrears by 32%\n\nSkills: Pastel, Sage, Excel, Debt Collection`}
-                className="min-h-[200px] font-mono text-sm"
-              />
-            </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    toggleShortlist(
+                      pipelineCandidate
+                    )
+                  }
+                  disabled={saving}
+                >
+                  <CheckCircle2 className="w-4 h-4 mr-2" />
 
-            {/* Optional CV */}
-            <div className="grid gap-2">
-              <Label>CV / Resume (optional)</Label>
-              <div className="border-2 border-dashed border-gray-200 rounded-lg p-4 text-center">
-                {appForm.cvFileName ? (
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-sm">
-                      <FileText className="w-5 h-5 text-red-600" />
-                      <span className="font-medium truncate max-w-[180px]">{appForm.cvFileName}</span>
-                    </div>
-                    <Button size="sm" variant="ghost" className="text-red-600" onClick={() => setAppForm({ ...appForm, cvFileName: null, cvData: null })}>
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ) : (
-                  <label className="cursor-pointer">
-                    <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                    <p className="text-sm text-gray-500">Optional – upload CV if available</p>
-                    <input type="file" accept=".pdf,.doc,.docx" className="hidden" onChange={handleCvUpload} />
-                  </label>
-                )}
-              </div>
-            </div>
+                  {pipelineCandidate.shortlisted
+                    ? 'Remove Shortlist'
+                    : 'Shortlist Candidate'}
+                </Button>
 
-            <div className="grid gap-2">
-              <Label>Internal Notes</Label>
-              <Textarea
-                value={appForm.notes}
-                onChange={(e) => setAppForm({ ...appForm, notes: e.target.value })}
-                placeholder="Admin notes, match reasons, interview feedback..."
-                className="min-h-[70px]"
-              />
-            </div>
+                <Button
+                  className="bg-red-600 hover:bg-red-700"
+                  onClick={() =>
+                    setPipelineCandidate(null)
+                  }
+                >
+                  Done
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
-            {selectedJob?.isPasted && (
-              <div className="flex items-center gap-2 bg-red-50 rounded-lg p-3">
-                <input
-                  type="checkbox"
-                  id="linkPasted"
-                  checked={appForm.linkedToPastedJob}
-                  onChange={(e) => setAppForm({ ...appForm, linkedToPastedJob: e.target.checked })}
-                  className="rounded border-red-300"
-                />
-                <Label htmlFor="linkPasted" className="text-red-700 font-medium cursor-pointer">
-                  Clearly link this applicant to the pasted job
-                </Label>
-              </div>
-            )}
+      {/* =========================================================================
+         PASTE JOB DIALOG
+      ========================================================================= */}
+
+      <Dialog
+        open={isPasteOpen}
+        onOpenChange={setIsPasteOpen}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-700">
+              <ClipboardPaste className="w-5 h-5" />
+              Paste Job Post
+            </DialogTitle>
+
+            <DialogDescription>
+              Paste the full job advertisement and HireResQ
+              will create a job record from it.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            <Textarea
+              value={pasteText}
+              onChange={(event) =>
+                setPasteText(event.target.value)
+              }
+              placeholder={`Paste the full job advert here...
+
+Example:
+
+Job Title: Senior Software Developer
+Location: Johannesburg
+
+Company: Example Company
+
+We are looking for...
+
+Requirements:
+React
+TypeScript
+5+ years experience`}
+              className="min-h-[300px] font-mono text-sm"
+            />
           </div>
+
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAppOpen(false)}>Cancel</Button>
-            <Button className="bg-red-600 hover:bg-red-700" onClick={saveApplication}>
-              {editingApp ? 'Save Changes' : 'Add Applicant'}
+            <Button
+              variant="outline"
+              onClick={() => {
+                setPasteText('');
+                setIsPasteOpen(false);
+              }}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              className="bg-red-600 hover:bg-red-700"
+              onClick={handlePasteJob}
+              disabled={
+                saving ||
+                !pasteText.trim()
+              }
+            >
+              {saving ? 'Posting...' : 'Post Job'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation */}
-      <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+      {/* =========================================================================
+         ADD / EDIT JOB DIALOG
+      ========================================================================= */}
+
+      <Dialog
+        open={isAddOpen || isEditOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeJobForm();
+          }
+        }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {isEditOpen
+                ? 'Edit Job'
+                : 'Post New Job'}
+            </DialogTitle>
+
+            <DialogDescription>
+              {isEditOpen
+                ? 'Update this recruitment job.'
+                : 'Post a job first, then link candidates to it through the recruitment pipeline.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-5 py-4">
+            {/* Job title */}
+            <div className="grid gap-2">
+              <Label>
+                Job Title *
+              </Label>
+
+              <Input
+                value={jobForm.title}
+                onChange={(event) =>
+                  setJobForm((previous) => ({
+                    ...previous,
+                    title: event.target.value,
+                  }))
+                }
+                placeholder="e.g. Senior Frontend Developer"
+              />
+            </div>
+
+            {/* Location */}
+            <div className="grid gap-2">
+              <Label>
+                Location
+              </Label>
+
+              <Select
+                value={jobForm.location}
+                onValueChange={(value) =>
+                  setJobForm((previous) => ({
+                    ...previous,
+                    location: value,
+                  }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+
+                <SelectContent>
+                  {LOCATIONS.map((location) => (
+                    <SelectItem
+                      key={location}
+                      value={location}
+                    >
+                      {location}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Job type */}
+            <div className="grid gap-2">
+              <Label>
+                Job Type
+              </Label>
+
+              <Select
+                value={jobForm.job_type}
+                onValueChange={(value) =>
+                  setJobForm((previous) => ({
+                    ...previous,
+                    job_type: value,
+                  }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+
+                <SelectContent>
+                  {JOB_TYPES.map((type) => (
+                    <SelectItem
+                      key={type}
+                      value={type}
+                    >
+                      {type}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Work mode */}
+            <div className="grid gap-2">
+              <Label>
+                Work Mode
+              </Label>
+
+              <Select
+                value={jobForm.work_mode}
+                onValueChange={(value) =>
+                  setJobForm((previous) => ({
+                    ...previous,
+                    work_mode: value,
+                  }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+
+                <SelectContent>
+                  {WORK_MODES.map((mode) => (
+                    <SelectItem
+                      key={mode}
+                      value={mode}
+                    >
+                      {mode}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Description */}
+            <div className="grid gap-2">
+              <Label>
+                Job Description
+              </Label>
+
+              <Textarea
+                value={jobForm.description}
+                onChange={(event) =>
+                  setJobForm((previous) => ({
+                    ...previous,
+                    description:
+                      event.target.value,
+                  }))
+                }
+                placeholder="Enter the complete job description, requirements and responsibilities..."
+                className="min-h-[180px]"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={closeJobForm}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              className="bg-red-600 hover:bg-red-700"
+              onClick={saveJob}
+              disabled={
+                saving ||
+                !jobForm.title.trim()
+              }
+            >
+              {saving
+                ? 'Saving...'
+                : isEditOpen
+                ? 'Save Changes'
+                : 'Post Job'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* =========================================================================
+         DELETE DIALOG
+      ========================================================================= */}
+
+      <Dialog
+        open={isDeleteOpen}
+        onOpenChange={setIsDeleteOpen}
+      >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Job</DialogTitle>
+            <DialogTitle>
+              Delete Job
+            </DialogTitle>
+
+            <DialogDescription>
+              This action cannot be undone. Candidates
+              linked to this job will remain in your
+              candidate database but become unassigned.
+            </DialogDescription>
           </DialogHeader>
-          <p>Are you sure you want to delete <strong>{jobToDelete?.title}</strong>? All associated applications will also be removed.</p>
+
+          <div className="py-4">
+            <p className="text-gray-700">
+              Are you sure you want to delete{' '}
+              <strong>
+                {jobToDelete?.title ||
+                  'this job'}
+              </strong>
+              ?
+            </p>
+          </div>
+
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteOpen(false)}>Cancel</Button>
-            <Button className="bg-red-600 hover:bg-red-700" onClick={deleteJob}>Delete</Button>
+            <Button
+              variant="outline"
+              onClick={() =>
+                setIsDeleteOpen(false)
+              }
+            >
+              Cancel
+            </Button>
+
+            <Button
+              className="bg-red-600 hover:bg-red-700"
+              onClick={deleteJob}
+              disabled={saving}
+            >
+              {saving
+                ? 'Deleting...'
+                : 'Delete Job'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -279,7 +279,7 @@ Best regards,
             Unlock Full AI Outreach Engine
           </a>
           <p className="mt-6 text-gray-600 text-lg">
-            Personalized sequences, smart timing, auto-follow-ups & meeting booking — start your free trial today.
+            Personalized sequences, smart timing, auto-follow-ups & meeting booking.
           </p>
         </div>
       </main>

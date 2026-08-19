@@ -22,12 +22,15 @@ import {
 
 import { cn } from "@/lib/utils";
 
-
 // ============================================================
 // SIDEBAR MENU
 // ============================================================
 
 const menuItems = [
+  // ==========================================================
+  // DASHBOARD
+  // ==========================================================
+
   {
     icon: LayoutDashboard,
     label: "Dashboard",
@@ -35,17 +38,9 @@ const menuItems = [
     exact: true,
   },
 
-  {
-    icon: Sparkles,
-    label: "AI Assistant",
-    path: "/dashboard/aiassistant",
-  },
-
-  {
-    icon: Search,
-    label: "AI Sourcing",
-    path: "/dashboard/aisourcing",
-  },
+  // ==========================================================
+  // CORE RECRUITMENT
+  // ==========================================================
 
   {
     icon: Users,
@@ -98,6 +93,24 @@ const menuItems = [
   },
 
   // ==========================================================
+  // COMING SOON
+  // ==========================================================
+
+  {
+    icon: Search,
+    label: "AI Sourcing",
+    path: "/dashboard/aisourcing",
+    comingSoon: true,
+  },
+
+  {
+    icon: Sparkles,
+    label: "AI Assistant",
+    path: "/dashboard/aiassistant",
+    comingSoon: true,
+  },
+
+  // ==========================================================
   // ONBOARDING
   // ==========================================================
 
@@ -105,16 +118,6 @@ const menuItems = [
     icon: Users,
     label: "Onboarding",
     path: "/dashboard/onboarding",
-  },
-
-  // ==========================================================
-  // ADMIN
-  // ==========================================================
-
-  {
-    icon: Shield,
-    label: "Admin Dashboard",
-    path: "/dashboard/admin",
   },
 
   // ==========================================================
@@ -126,8 +129,17 @@ const menuItems = [
     label: "Settings",
     path: "/dashboard/settings",
   },
-];
 
+  // ==========================================================
+  // ADMIN
+  // ==========================================================
+
+  {
+    icon: Shield,
+    label: "Admin Dashboard",
+    path: "/dashboard/admin",
+  },
+];
 
 // ============================================================
 // COMPONENT
@@ -140,7 +152,6 @@ export default function Sidebar({
 }) {
   const location = useLocation();
 
-
   // ==========================================================
   // SUPPORT BOTH PROPS
   //
@@ -148,10 +159,9 @@ export default function Sidebar({
   //
   // setIsCollapsed={setIsCollapsed}
   //
-  // or:
+  // OR:
   //
   // onToggle={...}
-  //
   // ==========================================================
 
   const handleToggle = () => {
@@ -164,7 +174,6 @@ export default function Sidebar({
       onToggle();
     }
   };
-
 
   // ==========================================================
   // ACTIVE ROUTE
@@ -181,7 +190,6 @@ export default function Sidebar({
     );
   };
 
-
   // ==========================================================
   // RENDER
   // ==========================================================
@@ -197,7 +205,6 @@ export default function Sidebar({
         isCollapsed ? "w-20" : "w-64"
       )}
     >
-
       {/* ======================================================
           LOGO
       ====================================================== */}
@@ -205,16 +212,13 @@ export default function Sidebar({
       <div
         className={cn(
           "h-20 shrink-0 flex items-center",
-          isCollapsed
-            ? "justify-center"
-            : "px-6"
+          isCollapsed ? "justify-center" : "px-6"
         )}
       >
         <span className="font-bold text-xl text-white">
           {isCollapsed ? "H" : "HireResQ"}
         </span>
       </div>
-
 
       {/* ======================================================
           COLLAPSE BUTTON
@@ -242,6 +246,7 @@ export default function Sidebar({
           items-center
           justify-center
           shadow-lg
+          transition-colors
         "
       >
         <ChevronLeft
@@ -252,7 +257,6 @@ export default function Sidebar({
           )}
         />
       </button>
-
 
       {/* ======================================================
           NAVIGATION
@@ -273,6 +277,72 @@ export default function Sidebar({
           {menuItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item);
+
+            // ==================================================
+            // COMING SOON ITEMS
+            // These are intentionally NOT clickable.
+            // ==================================================
+
+            if (item.comingSoon) {
+              return (
+                <div
+                  key={item.path}
+                  title={
+                    isCollapsed
+                      ? `${item.label} — Coming Soon`
+                      : ""
+                  }
+                  aria-disabled="true"
+                  className={cn(
+                    "flex items-center",
+                    "h-12",
+                    "rounded-xl",
+                    "whitespace-nowrap",
+                    "text-gray-500",
+                    "cursor-not-allowed",
+                    "opacity-70",
+                    "select-none",
+
+                    isCollapsed
+                      ? "justify-center px-2"
+                      : "gap-3 px-4"
+                  )}
+                >
+                  <Icon
+                    className="
+                      w-5
+                      h-5
+                      shrink-0
+                    "
+                  />
+
+                  {!isCollapsed && (
+                    <>
+                      <span className="text-sm font-medium flex-1">
+                        {item.label}
+                      </span>
+
+                      <span
+                        className="
+                          text-[10px]
+                          font-semibold
+                          uppercase
+                          tracking-wide
+                          text-red-400
+                          shrink-0
+                        "
+                      >
+                        Soon
+                      </span>
+                    </>
+                  )}
+                </div>
+              );
+            }
+
+            // ==================================================
+            // NORMAL NAVIGATION ITEM
+            // ==================================================
 
             return (
               <Link
@@ -299,7 +369,6 @@ export default function Sidebar({
                     : "text-gray-400 hover:bg-white/10 hover:text-white"
                 )}
               >
-
                 <Icon
                   className="
                     w-5
@@ -313,14 +382,12 @@ export default function Sidebar({
                     {item.label}
                   </span>
                 )}
-
               </Link>
             );
           })}
 
         </div>
       </nav>
-
 
       {/* ======================================================
           USER
@@ -329,12 +396,9 @@ export default function Sidebar({
       <div
         className={cn(
           "shrink-0 border-t border-white/10",
-          isCollapsed
-            ? "p-3"
-            : "p-4"
+          isCollapsed ? "p-3" : "p-4"
         )}
       >
-
         <div
           className={cn(
             "flex items-center",
@@ -343,7 +407,6 @@ export default function Sidebar({
               : "gap-3"
           )}
         >
-
           <UserCircle
             className="
               w-9
@@ -355,7 +418,6 @@ export default function Sidebar({
 
           {!isCollapsed && (
             <div className="min-w-0">
-
               <p
                 className="
                   text-sm
@@ -370,14 +432,10 @@ export default function Sidebar({
               <p className="text-xs text-gray-400">
                 Pro Plan
               </p>
-
             </div>
           )}
-
         </div>
-
       </div>
-
     </aside>
   );
 }

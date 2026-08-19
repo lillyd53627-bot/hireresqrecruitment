@@ -306,7 +306,7 @@ export default function CandidatePortalDemo() {
             Unlock Full Candidate Portal
           </a>
           <p className="mt-6 text-gray-600 text-lg">
-            Seamless candidate experience, real-time updates & branded portals — start your free trial today.
+            Seamless candidate experience, real-time updates & branded portals.
           </p>
         </div>
       </main>

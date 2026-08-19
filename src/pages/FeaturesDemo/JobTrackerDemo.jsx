@@ -224,7 +224,7 @@ export default function JobTrackerDemo() {
             Unlock Full Job Tracker
           </a>
           <p className="mt-6 text-gray-600 text-lg">
-            Track candidates, manage jobs & close placements faster — start your free trial today.
+            Track candidates, manage jobs & close placements faster.
           </p>
         </div>
       </main>

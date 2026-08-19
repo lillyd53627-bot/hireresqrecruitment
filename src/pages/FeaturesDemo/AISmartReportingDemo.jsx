@@ -166,7 +166,7 @@ export default function AISmartReportingDemo() {
             Unlock Full Smart Reporting
           </a>
           <p className="mt-6 text-gray-600 text-lg">
-            Real-time dashboards, revenue tracking & pipeline insights — start your free trial today.
+            Real-time dashboards, revenue tracking & pipeline insights.
           </p>
         </div>
       </main>

@@ -160,7 +160,7 @@ export default function Home() {
               </h1>
 
               <p className="text-xl text-gray-300 max-w-lg">
-                Recruitment that runs itself. AI finds clients for you. 
+                Recruitment made easy. AI finds clients for you. 
                 AI finds candidates for you. You focus on results, we automate the work.
               </p>
 
@@ -326,7 +326,6 @@ export default function Home() {
                 <li><Link to="/features" className="hover:text-white">Features</Link></li>
                 <li><Link to="/pricing" className="hover:text-white">Pricing</Link></li>
                 <li><Link to="/demo" className="hover:text-white">Demo</Link></li>
-                <li><Link to="/dashboard" className="hover:text-white">Dashboard</Link></li>
               </ul>
             </div>
 
@@ -356,7 +355,7 @@ export default function Home() {
 
           <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm">
             <p className="text-gray-400">
-              © {new Date().getFullYear()} HireResQ AI. All rights reserved.
+              ©2025 HireResQ AI. All rights reserved.
             </p>
 
             <a

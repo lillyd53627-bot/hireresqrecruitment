@@ -42,7 +42,7 @@ export default function About() {
                 Traditional recruitment platforms only help you post jobs. HireResQ AI goes further — acting as a complete AI-powered recruitment department that supports you from sourcing candidates to securing new clients.
               </p>
               <p className="mt-4">
-                Built by recruiters, HR professionals, and AI engineers, the platform combines real-world recruitment expertise with powerful automation to eliminate repetitive tasks and allow agencies to focus on closing placements and growing their business.
+                The platform combines real-world recruitment expertise with powerful automation to eliminate repetitive tasks and allow agencies to focus on closing placements and growing their business.
               </p>
             </section>
 
@@ -64,10 +64,10 @@ export default function About() {
 
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                   <h3 className="text-xl font-semibold mb-3">
-                    70% Less Admin Work
+                    60% Less Admin Work
                   </h3>
                   <p className="text-gray-600">
-                    Reduce the time spent sourcing, filtering and tracking candidates by over 70% with AI-driven workflows and a unified recruitment dashboard.
+                    Reduce the time spent sourcing, filtering and tracking candidates with AI-driven workflows and a unified recruitment dashboard.
                   </p>
                 </div>
 

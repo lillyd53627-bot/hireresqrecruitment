@@ -253,7 +253,7 @@ export default function AIVideoScreeningDemo() {
             Unlock Full AI Video Screening
           </a>
           <p className="mt-6 text-gray-600 text-lg">
-            Automate interviews, get smart scoring & hire top talent faster — start your free trial today.
+            Automate interviews, get smart scoring & hire top talent faster.
           </p>
         </div>
       </main>

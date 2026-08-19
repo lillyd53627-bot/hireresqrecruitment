@@ -209,7 +209,7 @@ export default function AITalentSourcingDemo() {
             Unlock Full AI Talent Sourcing
           </a>
           <p className="mt-6 text-gray-600 text-lg">
-            Access millions of profiles, smart matching & instant sourcing — start your free trial today.
+            Access millions of profiles, smart matching & instant sourcing.
           </p>
         </div>
       </main>

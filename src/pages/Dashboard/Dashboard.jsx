@@ -1,80 +1,103 @@
+// src/pages/Dashboard/Dashboard.jsx
 import React, {
+  useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
-} from "react";
+} from 'react';
 
-import { motion } from "framer-motion";
+import { motion } from 'framer-motion';
 
 import {
+  AlertCircle,
   Briefcase,
-  Users,
   Building2,
-  UserCheck,
-  ClipboardPaste,
+  CheckCircle2,
   ChevronRight,
-  Star,
+  CreditCard,
   DollarSign,
+  Loader2,
+  RefreshCw,
+  Star,
+  UserCheck,
   UserPlus,
-  Lock,
-} from "lucide-react";
+  Users,
+} from 'lucide-react';
+
+import { Button } from '@/components/ui/button';
 
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from '@/components/ui/card';
 
-import { Badge } from "@/components/ui/badge";
+import { Badge } from '@/components/ui/badge';
 
-import { Button } from "@/components/ui/button";
+import Sidebar from '@/components/Dashboard/Sidebar';
+import TopBar from '@/components/Dashboard/TopBar';
 
-import TopBar from "@/components/Dashboard/TopBar";
+import { useNavigate } from 'react-router-dom';
 
-import {
-  useNavigate,
-} from "react-router-dom";
-
-import { supabase } from "@/lib/supabase";
-
-
-// ============================================================
-// PLAN LEVELS
-// ============================================================
-
-const PLAN_LEVELS = {
-  starter: 1,
-  growth: 2,
-  advance: 3,
-};
-
+import { supabase } from '@/lib/supabase';
 
 // ============================================================
 // HELPERS
 // ============================================================
 
-const formatRelative = (iso) => {
-  if (!iso) {
-    return "—";
+const formatCurrency = (value) => {
+  const number = Number(value || 0);
+
+  if (Number.isNaN(number)) {
+    return 'R 0';
   }
 
-  const date = new Date(iso);
+  return new Intl.NumberFormat('en-ZA', {
+    style: 'currency',
+    currency: 'ZAR',
+    maximumFractionDigits: 0,
+  }).format(number);
+};
+
+const formatRelative = (value) => {
+  if (!value) {
+    return '—';
+  }
+
+  const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
-    return "—";
+    return '—';
   }
 
-  const days = Math.floor(
-    (Date.now() - date.getTime()) / 86400000
-  );
+  const difference = Date.now() - date.getTime();
 
-  if (days <= 0) {
-    return "Today";
+  if (difference < 0) {
+    return 'Just now';
   }
+
+  const minutes = Math.floor(difference / 60000);
+
+  if (minutes < 1) {
+    return 'Just now';
+  }
+
+  if (minutes < 60) {
+    return `${minutes} min ago`;
+  }
+
+  const hours = Math.floor(minutes / 60);
+
+  if (hours < 24) {
+    return `${hours} hr ago`;
+  }
+
+  const days = Math.floor(hours / 24);
 
   if (days === 1) {
-    return "Yesterday";
+    return 'Yesterday';
   }
 
   if (days < 7) {
@@ -85,33 +108,58 @@ const formatRelative = (iso) => {
     return `${Math.floor(days / 7)} weeks ago`;
   }
 
-  return date.toLocaleDateString("en-ZA");
+  return date.toLocaleDateString('en-ZA');
 };
 
-
-const formatCurrency = (value) => {
-  if (value === null || value === undefined || value === "") {
-    return "R0";
-  }
-
-  const num =
-    typeof value === "string"
-      ? parseFloat(
-          value.replace(/[^\d.-]/g, "")
-        )
-      : Number(value);
-
-  if (Number.isNaN(num)) {
-    return "R0";
-  }
-
-  return new Intl.NumberFormat("en-ZA", {
-    style: "currency",
-    currency: "ZAR",
-    maximumFractionDigits: 0,
-  }).format(num);
+const normalizeStatus = (value) => {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '_');
 };
 
+const getStatusColor = (status) => {
+  const normalized = normalizeStatus(status);
+
+  const colors = {
+    active: 'bg-green-100 text-green-700',
+    open: 'bg-green-100 text-green-700',
+    shortlisted: 'bg-teal-100 text-teal-700',
+    sourced: 'bg-gray-100 text-gray-700',
+    applied: 'bg-blue-100 text-blue-700',
+    screening: 'bg-purple-100 text-purple-700',
+    interview: 'bg-yellow-100 text-yellow-700',
+    interviewed: 'bg-yellow-100 text-yellow-700',
+    offer: 'bg-orange-100 text-orange-700',
+    hired: 'bg-green-100 text-green-700',
+    rejected: 'bg-red-100 text-red-700',
+    cancelled: 'bg-red-100 text-red-700',
+    expired: 'bg-gray-100 text-gray-700',
+    inactive: 'bg-gray-100 text-gray-700',
+  };
+
+  return colors[normalized] || 'bg-gray-100 text-gray-700';
+};
+
+const getCandidateStage = (candidate) => {
+  if (candidate?.shortlisted === true) {
+    return 'shortlisted';
+  }
+
+  return normalizeStatus(candidate?.stage || 'sourced');
+};
+
+const getCandidateName = (candidate) => {
+  return candidate?.name || 'Unnamed Candidate';
+};
+
+const getJobTitle = (job) => {
+  return job?.title || 'Untitled Job';
+};
+
+const getClientName = (client) => {
+  return client?.company_name || 'Unnamed Client';
+};
 
 // ============================================================
 // DASHBOARD
@@ -120,1315 +168,1211 @@ const formatCurrency = (value) => {
 export default function Dashboard() {
   const navigate = useNavigate();
 
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  const [currentUser, setCurrentUser] = useState(null);
+  const [profile, setProfile] = useState(null);
+
   const [clients, setClients] = useState([]);
   const [jobs, setJobs] = useState([]);
+  const [candidates, setCandidates] = useState([]);
+  const [subscriptions, setSubscriptions] = useState([]);
 
-  const [lastUpdated, setLastUpdated] = useState(
-    new Date()
-  );
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null);
 
-  const [user, setUser] = useState(null);
+  const [realtimeConnected, setRealtimeConnected] = useState(false);
+  const realtimeChannelRef = useRef(null);
 
-  const [plan, setPlan] = useState("starter");
+  const [queryStatus, setQueryStatus] = useState({
+    profile: 'waiting',
+    clients: 'waiting',
+    jobs: 'waiting',
+    candidates: 'waiting',
+    subscriptions: 'waiting',
+  });
 
-  const [role, setRole] = useState("");
-
-  const [authLoading, setAuthLoading] = useState(true);
-
+  const [queryErrors, setQueryErrors] = useState({});
+  const [lastUpdated, setLastUpdated] = useState(null);
 
   // ==========================================================
-  // LOAD USER + PLAN
+  // CURRENT USER
+  // ==========================================================
+
+  const loadCurrentUser = useCallback(async () => {
+    const { data, error: authError } = await supabase.auth.getUser();
+
+    if (authError) {
+      throw new Error(`Authentication error: ${authError.message}`);
+    }
+
+    if (!data?.user) {
+      throw new Error('No authenticated user found. Please sign in again.');
+    }
+
+    setCurrentUser(data.user);
+    return data.user;
+  }, []);
+
+  // ==========================================================
+  // PROFILE
+  // ==========================================================
+
+  const loadProfile = useCallback(async (userId) => {
+    if (!userId) return null;
+
+    setQueryStatus((previous) => ({ ...previous, profile: 'loading' }));
+
+    const { data, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (profileError) {
+      console.error('[Dashboard] Profile error:', profileError);
+      setQueryStatus((previous) => ({ ...previous, profile: 'error' }));
+      setQueryErrors((previous) => ({
+        ...previous,
+        profile: profileError.message,
+      }));
+      setProfile(null);
+      return null;
+    }
+
+    setQueryStatus((previous) => ({
+      ...previous,
+      profile: data ? 'success' : 'empty',
+    }));
+    setProfile(data || null);
+    return data || null;
+  }, []);
+
+  // ==========================================================
+  // CLIENTS
+  // ==========================================================
+
+  const loadClients = useCallback(async (userId) => {
+    setQueryStatus((previous) => ({ ...previous, clients: 'loading' }));
+
+    const { data, error: clientsError } = await supabase
+      .from('clients')
+      .select(
+        `
+          id,
+          user_id,
+          company_name,
+          contact_name,
+          email,
+          phone,
+          status,
+          notes,
+          created_at,
+          updated_at
+        `
+      )
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (clientsError) {
+      console.error('[Dashboard] Clients error:', clientsError);
+      setQueryStatus((previous) => ({ ...previous, clients: 'error' }));
+      setQueryErrors((previous) => ({
+        ...previous,
+        clients: clientsError.message,
+      }));
+      setClients([]);
+      return clientsError;
+    }
+
+    setQueryStatus((previous) => ({
+      ...previous,
+      clients: data?.length > 0 ? 'success' : 'empty',
+    }));
+    setClients(data || []);
+    return null;
+  }, []);
+
+  // ==========================================================
+  // JOBS
+  // ==========================================================
+
+  const loadJobs = useCallback(async (userId) => {
+    setQueryStatus((previous) => ({ ...previous, jobs: 'loading' }));
+
+    const { data, error: jobsError } = await supabase
+      .from('jobs')
+      .select(
+        `
+          id,
+          title,
+          description,
+          location,
+          created_at,
+          user_id,
+          client_id,
+          employment_type,
+          work_mode,
+          status,
+          salary,
+          requirements,
+          is_pasted,
+          source
+        `
+      )
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (jobsError) {
+      console.error('[Dashboard] Jobs error:', jobsError);
+      setQueryStatus((previous) => ({ ...previous, jobs: 'error' }));
+      setQueryErrors((previous) => ({
+        ...previous,
+        jobs: jobsError.message,
+      }));
+      setJobs([]);
+      return jobsError;
+    }
+
+    setQueryStatus((previous) => ({
+      ...previous,
+      jobs: data?.length > 0 ? 'success' : 'empty',
+    }));
+    setJobs(data || []);
+    return null;
+  }, []);
+
+  // ==========================================================
+  // CANDIDATES
+  // ==========================================================
+
+  const loadCandidates = useCallback(async (userId) => {
+    setQueryStatus((previous) => ({ ...previous, candidates: 'loading' }));
+
+    const { data, error: candidatesError } = await supabase
+      .from('candidates')
+      .select(
+        `
+          id,
+          name,
+          title,
+          location,
+          cv_file_path,
+          shortlisted,
+          stage,
+          match_score,
+          created_at,
+          updated_at,
+          user_id,
+          email,
+          phone,
+          experience,
+          education,
+          skills,
+          notes,
+          industry,
+          salary,
+          nationality,
+          availability,
+          job_id
+        `
+      )
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (candidatesError) {
+      console.error('[Dashboard] Candidates error:', candidatesError);
+      setQueryStatus((previous) => ({ ...previous, candidates: 'error' }));
+      setQueryErrors((previous) => ({
+        ...previous,
+        candidates: candidatesError.message,
+      }));
+      setCandidates([]);
+      return candidatesError;
+    }
+
+    setQueryStatus((previous) => ({
+      ...previous,
+      candidates: data?.length > 0 ? 'success' : 'empty',
+    }));
+    setCandidates(data || []);
+    return null;
+  }, []);
+
+  // ==========================================================
+  // SUBSCRIPTIONS
+  // ==========================================================
+
+  const loadSubscriptions = useCallback(async (userId) => {
+    setQueryStatus((previous) => ({ ...previous, subscriptions: 'loading' }));
+
+    const { data, error: subscriptionsError } = await supabase
+      .from('subscriptions')
+      .select(
+        `
+          id,
+          user_id,
+          plan_id,
+          plan_name,
+          amount,
+          active_jobs_limit,
+          candidate_matches_limit,
+          status,
+          starts_at,
+          expires_at,
+          paystack_reference,
+          created_at,
+          updated_at
+        `
+      )
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (subscriptionsError) {
+      console.error('[Dashboard] Subscriptions error:', subscriptionsError);
+      setQueryStatus((previous) => ({ ...previous, subscriptions: 'error' }));
+      setQueryErrors((previous) => ({
+        ...previous,
+        subscriptions: subscriptionsError.message,
+      }));
+      setSubscriptions([]);
+      return subscriptionsError;
+    }
+
+    setQueryStatus((previous) => ({
+      ...previous,
+      subscriptions: data?.length > 0 ? 'success' : 'empty',
+    }));
+    setSubscriptions(data || []);
+    return null;
+  }, []);
+
+  // ==========================================================
+  // LOAD EVERYTHING
+  // ==========================================================
+
+  const loadDashboardData = useCallback(
+    async ({ initial = false } = {}) => {
+      try {
+        if (initial) {
+          setLoading(true);
+        } else {
+          setRefreshing(true);
+        }
+
+        setError(null);
+        setQueryErrors({});
+
+        const user = await loadCurrentUser();
+        await loadProfile(user.id);
+
+        const results = await Promise.all([
+          loadClients(user.id),
+          loadJobs(user.id),
+          loadCandidates(user.id),
+          loadSubscriptions(user.id),
+        ]);
+
+        const errors = results.filter(Boolean);
+
+        if (errors.length > 0) {
+          setError(errors.map((item) => item.message).join(' | '));
+        }
+
+        setLastUpdated(new Date());
+      } catch (loadError) {
+        console.error('[Dashboard] Fatal load error:', loadError);
+        setError(loadError?.message || 'Unable to load dashboard data.');
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [
+      loadCurrentUser,
+      loadProfile,
+      loadClients,
+      loadJobs,
+      loadCandidates,
+      loadSubscriptions,
+    ]
+  );
+
+  // ==========================================================
+  // INITIALISE
   // ==========================================================
 
   useEffect(() => {
     let mounted = true;
 
-    const loadUser = async () => {
-      try {
-        const {
-          data: {
-            user: authUser,
-          },
-          error: authError,
-        } = await supabase.auth.getUser();
-
-        if (
-          authError ||
-          !authUser
-        ) {
-          if (mounted) {
-            setUser(null);
-            setPlan("starter");
-            setRole("");
-            setAuthLoading(false);
-          }
-
-          return;
-        }
-
-        if (mounted) {
-          setUser(authUser);
-        }
-
-        const {
-          data: userData,
-          error: userError,
-        } = await supabase
-          .from("users")
-          .select("plan, role")
-          .eq("email", authUser.email)
-          .maybeSingle();
-
-        if (userError) {
-          console.warn(
-            "Could not load subscription data:",
-            userError
-          );
-
-          if (mounted) {
-            setPlan("starter");
-            setRole("");
-            setAuthLoading(false);
-          }
-
-          return;
-        }
-
-        if (mounted) {
-          setPlan(
-            String(
-              userData?.plan || "starter"
-            ).toLowerCase()
-          );
-
-          setRole(
-            String(
-              userData?.role || ""
-            ).toLowerCase()
-          );
-
-          setAuthLoading(false);
-        }
-      } catch (error) {
-        console.error(
-          "Dashboard user loading error:",
-          error
-        );
-
-        if (mounted) {
-          setPlan("starter");
-          setRole("");
-          setAuthLoading(false);
-        }
-      }
+    const initialise = async () => {
+      if (!mounted) return;
+      await loadDashboardData({ initial: true });
     };
 
-    loadUser();
+    initialise();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (!mounted) return;
+
+        if (event === 'SIGNED_OUT') {
+          setCurrentUser(null);
+          setProfile(null);
+          setClients([]);
+          setJobs([]);
+          setCandidates([]);
+          setSubscriptions([]);
+          setRealtimeConnected(false);
+          return;
+        }
+
+        if (session?.user) {
+          setCurrentUser(session.user);
+
+          if (
+            event === 'SIGNED_IN' ||
+            event === 'TOKEN_REFRESHED' ||
+            event === 'USER_UPDATED'
+          ) {
+            await loadDashboardData({ initial: false });
+          }
+        }
+      }
+    );
 
     return () => {
       mounted = false;
+      authListener?.subscription?.unsubscribe();
     };
-  }, []);
-
-
-  // ==========================================================
-  // ACCESS LEVEL
-  // ==========================================================
-
-  const hasFullAccess =
-    role === "admin" ||
-    role === "developer";
-
-  const userPlanLevel =
-    PLAN_LEVELS[plan] || 0;
-
-  const canAccessGrowth =
-    hasFullAccess ||
-    userPlanLevel >= PLAN_LEVELS.growth;
-
-  const canAccessAdvance =
-    hasFullAccess ||
-    userPlanLevel >= PLAN_LEVELS.advance;
-
-  const isPaid =
-    plan === "starter" ||
-    plan === "growth" ||
-    plan === "advance";
-
+  }, [loadDashboardData]);
 
   // ==========================================================
-  // LOAD CRM DATA
+  // REALTIME
   // ==========================================================
 
   useEffect(() => {
-    const safeReadArray = (key) => {
-      try {
-        const raw =
-          localStorage.getItem(key);
+    if (!currentUser?.id) {
+      return undefined;
+    }
 
-        if (
-          raw === null ||
-          raw === ""
-        ) {
-          return [];
-        }
+    if (realtimeChannelRef.current) {
+      supabase.removeChannel(realtimeChannelRef.current);
+      realtimeChannelRef.current = null;
+    }
 
-        const parsed =
-          JSON.parse(raw);
+    setRealtimeConnected(false);
 
-        return Array.isArray(parsed)
-          ? parsed
-          : [];
-      } catch (error) {
-        console.error(
-          `Could not read ${key} from localStorage:`,
-          error
-        );
+    const channel = supabase.channel(
+      `hire-resq-dashboard-${currentUser.id}`
+    );
 
-        return [];
+    realtimeChannelRef.current = channel;
+
+    const handleChange = (payload, setter) => {
+      if (!payload) return;
+
+      const newRecord = payload.new;
+      const oldRecord = payload.old;
+
+      if (newRecord?.user_id && newRecord.user_id !== currentUser.id) {
+        return;
       }
-    };
 
+      if (payload.eventType === 'INSERT') {
+        setter((previous) => {
+          const exists = previous.some((item) => item.id === newRecord?.id);
+          if (exists) return previous;
+          return [newRecord, ...previous];
+        });
+      }
 
-    const loadData = () => {
-      const savedClients =
-        safeReadArray("crm_clients");
+      if (payload.eventType === 'UPDATE') {
+        setter((previous) =>
+          previous.map((item) =>
+            item.id === newRecord?.id ? { ...item, ...newRecord } : item
+          )
+        );
+      }
 
-      const savedJobs =
-        safeReadArray("crm_jobs");
+      if (payload.eventType === 'DELETE') {
+        setter((previous) =>
+          previous.filter((item) => item.id !== oldRecord?.id)
+        );
+      }
 
-      setClients(savedClients);
-      setJobs(savedJobs);
       setLastUpdated(new Date());
     };
 
+    channel.on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'clients',
+        filter: `user_id=eq.${currentUser.id}`,
+      },
+      (payload) => handleChange(payload, setClients)
+    );
 
-    loadData();
+    channel.on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'jobs',
+        filter: `user_id=eq.${currentUser.id}`,
+      },
+      (payload) => handleChange(payload, setJobs)
+    );
 
+    channel.on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'candidates',
+        filter: `user_id=eq.${currentUser.id}`,
+      },
+      (payload) => handleChange(payload, setCandidates)
+    );
 
-    const onStorage = (event) => {
-      if (
-        !event.key ||
-        event.key === "crm_clients" ||
-        event.key === "crm_jobs"
-      ) {
-        loadData();
+    channel.on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'subscriptions',
+        filter: `user_id=eq.${currentUser.id}`,
+      },
+      (payload) => handleChange(payload, setSubscriptions)
+    );
+
+    channel.on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'profiles',
+        filter: `id=eq.${currentUser.id}`,
+      },
+      (payload) => {
+        if (
+          payload.eventType === 'INSERT' ||
+          payload.eventType === 'UPDATE'
+        ) {
+          setProfile(payload.new);
+        }
+
+        if (payload.eventType === 'DELETE') {
+          setProfile(null);
+        }
+
+        setLastUpdated(new Date());
       }
-    };
-
-
-    const onCrmDataUpdated = () => {
-      loadData();
-    };
-
-
-    window.addEventListener(
-      "storage",
-      onStorage
     );
 
-    window.addEventListener(
-      "crm-data-updated",
-      onCrmDataUpdated
-    );
+    channel.subscribe((status, subscribeError) => {
+      if (status === 'SUBSCRIBED') {
+        setRealtimeConnected(true);
+      }
 
-
-    const interval =
-      window.setInterval(
-        loadData,
-        3000
-      );
-
+      if (
+        status === 'CHANNEL_ERROR' ||
+        status === 'TIMED_OUT' ||
+        status === 'CLOSED'
+      ) {
+        setRealtimeConnected(false);
+        console.error('[Dashboard Realtime]', status, subscribeError);
+      }
+    });
 
     return () => {
-      window.removeEventListener(
-        "storage",
-        onStorage
-      );
+      setRealtimeConnected(false);
+      supabase.removeChannel(channel);
 
-      window.removeEventListener(
-        "crm-data-updated",
-        onCrmDataUpdated
-      );
-
-      window.clearInterval(
-        interval
-      );
+      if (realtimeChannelRef.current === channel) {
+        realtimeChannelRef.current = null;
+      }
     };
-  }, []);
-
+  }, [currentUser?.id]);
 
   // ==========================================================
   // STATS
   // ==========================================================
 
   const stats = useMemo(() => {
-    const totalClients =
-      clients.length;
+    const activeClients = clients.filter(
+      (client) => normalizeStatus(client?.status) === 'active'
+    ).length;
 
-    const activeClients =
-      clients.filter(
-        (c) =>
-          String(
-            c?.status || ""
-          ).toLowerCase() === "active"
-      ).length;
+    const openJobs = jobs.filter(
+      (job) => normalizeStatus(job?.status) === 'open'
+    ).length;
 
-    const totalJobs =
-      jobs.length;
+    const totalCandidates = candidates.length;
 
-    const openJobs =
-      jobs.filter(
-        (j) =>
-          String(
-            j?.status || ""
-          ).toLowerCase() === "open"
-      ).length;
+    const shortlisted = candidates.filter(
+      (candidate) =>
+        candidate?.shortlisted === true ||
+        normalizeStatus(candidate?.stage) === 'shortlisted'
+    ).length;
 
-    const pastedJobs =
-      jobs.filter(
-        (j) => j?.isPasted
-      ).length;
+    const sourced = candidates.filter(
+      (candidate) => normalizeStatus(candidate?.stage) === 'sourced'
+    ).length;
 
-    const allApps =
-      jobs.flatMap(
-        (j) =>
-          Array.isArray(
-            j?.applications
-          )
-            ? j.applications
-            : []
-      );
+    const applied = candidates.filter(
+      (candidate) => normalizeStatus(candidate?.stage) === 'applied'
+    ).length;
 
-    const totalApplicants =
-      allApps.length;
+    const screening = candidates.filter(
+      (candidate) => normalizeStatus(candidate?.stage) === 'screening'
+    ).length;
 
-    const shortlisted =
-      allApps.filter(
-        (a) =>
-          a?.status ===
-          "shortlisted"
-      ).length;
+    const interview = candidates.filter((candidate) =>
+      ['interview', 'interviewed'].includes(
+        normalizeStatus(candidate?.stage)
+      )
+    ).length;
 
-    const interviewed =
-      allApps.filter(
-        (a) =>
-          a?.status ===
-          "interview"
-      ).length;
+    const offer = candidates.filter(
+      (candidate) => normalizeStatus(candidate?.stage) === 'offer'
+    ).length;
 
-    const hired =
-      allApps.filter(
-        (a) =>
-          a?.status === "hired"
-      ).length;
+    const hired = candidates.filter(
+      (candidate) => normalizeStatus(candidate?.stage) === 'hired'
+    ).length;
 
-    const offers =
-      allApps.filter(
-        (a) =>
-          a?.status === "offer"
-      ).length;
+    const rejected = candidates.filter(
+      (candidate) => normalizeStatus(candidate?.stage) === 'rejected'
+    ).length;
 
-    let totalRevenue = 0;
+    const activeSubscriptionsList = subscriptions.filter(
+      (subscription) => normalizeStatus(subscription?.status) === 'active'
+    );
 
-    clients.forEach((client) => {
-      if (!client?.revenue) {
-        return;
-      }
-
-      const amount =
-        parseFloat(
-          String(
-            client.revenue
-          ).replace(
-            /[^\d.-]/g,
-            ""
-          )
-        );
-
-      if (!Number.isNaN(amount)) {
-        totalRevenue += amount;
-      }
-    });
+    const totalRevenue = activeSubscriptionsList.reduce(
+      (total, subscription) => {
+        const amount = Number(subscription?.amount || 0);
+        return total + (Number.isNaN(amount) ? 0 : amount);
+      },
+      0
+    );
 
     return {
-      totalClients,
+      totalClients: clients.length,
       activeClients,
-      totalJobs,
+      totalJobs: jobs.length,
       openJobs,
-      pastedJobs,
-      totalApplicants,
+      totalCandidates,
+      sourced,
+      applied,
+      screening,
       shortlisted,
-      interviewed,
+      interview,
+      offer,
       hired,
-      offers,
+      rejected,
       totalRevenue,
+      activeSubscriptions: activeSubscriptionsList.length,
     };
-  }, [clients, jobs]);
-
-
-  // ==========================================================
-  // RECENT JOBS
-  // ==========================================================
-
-  const recentJobs =
-    useMemo(() => {
-      return [...jobs]
-        .sort(
-          (a, b) =>
-            new Date(
-              b?.postedAt || 0
-            ) -
-            new Date(
-              a?.postedAt || 0
-            )
-        )
-        .slice(0, 5);
-    }, [jobs]);
-
+  }, [clients, jobs, candidates, subscriptions]);
 
   // ==========================================================
-  // RECENT APPLICANTS
+  // RECENT LISTS
   // ==========================================================
 
-  const recentApplicants =
-    useMemo(() => {
-      const all =
-        jobs.flatMap((job) =>
-          (
-            Array.isArray(
-              job?.applications
-            )
-              ? job.applications
-              : []
-          ).map((application) => ({
-            ...application,
-            jobTitle:
-              job?.title ||
-              "Untitled Job",
-            jobId: job?.id,
-            isPasted:
-              job?.isPasted,
-          }))
-        );
+  const recentJobs = useMemo(() => {
+    return [...jobs]
+      .sort(
+        (a, b) =>
+          new Date(b?.created_at || 0) - new Date(a?.created_at || 0)
+      )
+      .slice(0, 5);
+  }, [jobs]);
 
-      return all
-        .sort(
-          (a, b) =>
-            new Date(
-              b?.appliedAt || 0
-            ) -
-            new Date(
-              a?.appliedAt || 0
-            )
-        )
-        .slice(0, 6);
-    }, [jobs]);
+  const recentCandidates = useMemo(() => {
+    return [...candidates]
+      .sort(
+        (a, b) =>
+          new Date(b?.created_at || 0) - new Date(a?.created_at || 0)
+      )
+      .slice(0, 6);
+  }, [candidates]);
 
-
-  // ==========================================================
-  // PIPELINE
-  // ==========================================================
-
-  const pipeline =
-    useMemo(() => {
-      const all =
-        jobs.flatMap(
-          (job) =>
-            Array.isArray(
-              job?.applications
-            )
-              ? job.applications
-              : []
-        );
-
-      return {
-        shortlisted:
-          all.filter(
-            (a) =>
-              a?.status ===
-              "shortlisted"
-          ).length,
-
-        applied:
-          all.filter(
-            (a) =>
-              a?.status ===
-              "applied"
-          ).length,
-
-        screening:
-          all.filter(
-            (a) =>
-              a?.status ===
-              "screening"
-          ).length,
-
-        interview:
-          all.filter(
-            (a) =>
-              a?.status ===
-              "interview"
-          ).length,
-
-        offer:
-          all.filter(
-            (a) =>
-              a?.status === "offer"
-          ).length,
-
-        hired:
-          all.filter(
-            (a) =>
-              a?.status === "hired"
-          ).length,
-
-        rejected:
-          all.filter(
-            (a) =>
-              a?.status ===
-              "rejected"
-          ).length,
-      };
-    }, [jobs]);
-
-
-  // ==========================================================
-  // STATUS COLORS
-  // ==========================================================
-
-  const getStatusColor =
-    (status) => {
-      const map = {
-        shortlisted:
-          "bg-teal-100 text-teal-700",
-
-        applied:
-          "bg-blue-100 text-blue-700",
-
-        screening:
-          "bg-purple-100 text-purple-700",
-
-        interview:
-          "bg-yellow-100 text-yellow-700",
-
-        offer:
-          "bg-orange-100 text-orange-700",
-
-        hired:
-          "bg-green-100 text-green-700",
-
-        rejected:
-          "bg-red-100 text-red-700",
-
-        open:
-          "bg-green-100 text-green-700",
-
-        on_hold:
-          "bg-yellow-100 text-yellow-700",
-
-        filled:
-          "bg-blue-100 text-blue-700",
-
-        closed:
-          "bg-gray-100 text-gray-700",
-
-        active:
-          "bg-green-100 text-green-700",
-      };
-
-      return (
-        map[status] ||
-        "bg-gray-100 text-gray-700"
-      );
-    };
-
-
-  // ==========================================================
-  // FEATURE NAVIGATION
-  // ==========================================================
-
-  const handleGrowthFeature =
-    (path) => {
-      if (canAccessGrowth) {
-        navigate(path);
-      } else {
-        navigate("/pricing");
-      }
-    };
-
-
-  const handleAdvanceFeature =
-    (path) => {
-      if (canAccessAdvance) {
-        navigate(path);
-      } else {
-        navigate("/pricing");
-      }
-    };
-
+  const recentClients = useMemo(() => {
+    return [...clients]
+      .sort(
+        (a, b) =>
+          new Date(b?.created_at || 0) - new Date(a?.created_at || 0)
+      )
+      .slice(0, 4);
+  }, [clients]);
 
   // ==========================================================
   // RENDER
   // ==========================================================
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Sidebar
+          isCollapsed={sidebarCollapsed}
+          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        />
+        <main
+          className={`transition-all duration-300 ${
+            sidebarCollapsed ? 'ml-20' : 'ml-64'
+          }`}
+        >
+          <TopBar title="Dashboard" subtitle="Loading live data..." />
+          <div className="flex items-center justify-center py-32">
+            <div className="text-center">
+              <Loader2 className="w-8 h-8 animate-spin text-red-600 mx-auto mb-4" />
+              <p className="text-sm text-gray-500">
+                Loading your dashboard...
+              </p>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
-
-      <TopBar
-        title="Dashboard"
-        subtitle={`Live overview · Updated ${lastUpdated.toLocaleTimeString(
-          "en-ZA"
-        )}`}
+      <Sidebar
+        isCollapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
 
-      <div className="p-8 space-y-8">
+      <main
+        className={`transition-all duration-300 ${
+          sidebarCollapsed ? 'ml-20' : 'ml-64'
+        }`}
+      >
+        <TopBar
+          title="Dashboard"
+          subtitle={
+            lastUpdated
+              ? `Live overview · Updated ${lastUpdated.toLocaleTimeString('en-ZA')}`
+              : 'Live overview'
+          }
+        />
 
-        {/* ==================================================
-            SUBSCRIPTION STATUS
-        ================================================== */}
+        <div className="p-8 space-y-8">
+          {/* HEADER ACTIONS */}
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">
+                Welcome back
+                {profile?.full_name ? `, ${profile.full_name}` : ''}
+              </h2>
+              <p className="text-sm text-gray-500">
+                Live CRM overview powered by Supabase
+              </p>
+            </div>
 
-        <div className="flex items-center justify-between bg-white border rounded-xl px-5 py-3 shadow-sm">
-
-          <div>
-            <p className="text-sm text-gray-500">
-              Current Plan
-            </p>
-
-            <p className="font-semibold text-gray-900 capitalize">
-
-              {authLoading
-                ? "Checking..."
-                : hasFullAccess
-                ? `${role} — Full Access`
-                : `${plan} ${
-                    isPaid
-                      ? "Plan"
-                      : "Account"
-                  }`}
-
-            </p>
+            <Button
+              variant="outline"
+              onClick={() => loadDashboardData({ initial: false })}
+              disabled={refreshing}
+            >
+              <RefreshCw
+                className={`w-4 h-4 mr-2 ${
+                  refreshing ? 'animate-spin' : ''
+                }`}
+              />
+              {refreshing ? 'Refreshing...' : 'Refresh'}
+            </Button>
           </div>
 
-
-          {!hasFullAccess && (
-            <Badge
-              className={
-                plan === "advance"
-                  ? "bg-red-600 text-white"
-                  : plan === "growth"
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-900 text-white"
-              }
-            >
-              {plan}
-            </Badge>
+          {/* ERROR */}
+          {error && (
+            <Card className="border-red-200 bg-red-50">
+              <CardContent className="p-5">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
+                  <div>
+                    <p className="font-semibold text-red-800">
+                      Database warning
+                    </p>
+                    <p className="text-sm text-red-700 mt-1">{error}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           )}
 
-
-          {hasFullAccess && (
-            <Badge className="bg-green-600 text-white">
-              UNLIMITED ACCESS
-            </Badge>
-          )}
-
-        </div>
-
-
-        {/* ==================================================
-            LIVE STATS
-        ================================================== */}
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-
-          {[
-            {
-              label:
-                "Active Clients",
-
-              value:
-                stats.activeClients,
-
-              sub:
-                `${stats.totalClients} total`,
-
-              icon:
-                Building2,
-
-              color:
-                "bg-blue-50 text-blue-600",
-            },
-
-            {
-              label:
-                "Open Jobs",
-
-              value:
-                stats.openJobs,
-
-              sub:
-                `${stats.pastedJobs} pasted`,
-
-              icon:
-                Briefcase,
-
-              color:
-                "bg-green-50 text-green-600",
-            },
-
-            {
-              label:
-                "Applicants",
-
-              value:
-                stats.totalApplicants,
-
-              sub:
-                `${stats.shortlisted} shortlisted`,
-
-              icon:
-                Users,
-
-              color:
-                "bg-purple-50 text-purple-600",
-            },
-
-            {
-              label:
-                "Hired",
-
-              value:
-                stats.hired,
-
-              sub:
-                `${stats.offers} offers`,
-
-              icon:
-                UserCheck,
-
-              color:
-                "bg-red-50 text-red-600",
-            },
-          ].map(
-            (stat, index) => {
-              const Icon =
-                stat.icon;
-
-              return (
-                <motion.div
-                  key={
-                    stat.label
-                  }
-                  initial={{
-                    opacity: 0,
-                    y: 12,
-                  }}
-                  animate={{
-                    opacity: 1,
-                    y: 0,
-                  }}
-                  transition={{
-                    delay:
-                      index *
-                      0.05,
-                  }}
-                >
-
-                  <Card className="border-0 shadow-sm hover:shadow-md transition-shadow">
-
-                    <CardContent className="p-5 flex items-center gap-4">
-
-                      <div
-                        className={`
-                          w-12
-                          h-12
-                          rounded-xl
-                          flex
-                          items-center
-                          justify-center
-                          ${stat.color}
-                        `}
-                      >
-                        <Icon className="w-6 h-6" />
-                      </div>
-
-                      <div>
-
-                        <p className="text-2xl font-bold">
-                          {stat.value}
-                        </p>
-
-                        <p className="text-sm font-medium text-gray-700">
-                          {stat.label}
-                        </p>
-
-                        <p className="text-xs text-gray-400">
-                          {stat.sub}
-                        </p>
-
-                      </div>
-
-                    </CardContent>
-
-                  </Card>
-
-                </motion.div>
-              );
-            }
-          )}
-
-        </div>
-
-
-        {/* ==================================================
-            REVENUE + PIPELINE
-        ================================================== */}
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-          <Card className="border-0 shadow-sm">
-
-            <CardHeader className="pb-2">
-
-              <CardTitle className="text-base flex items-center gap-2">
-
-                <DollarSign className="w-4 h-4 text-red-600" />
-
-                Client Revenue
-
-              </CardTitle>
-
-            </CardHeader>
-
-            <CardContent>
-
-              <p className="text-3xl font-bold text-red-600">
-                {formatCurrency(
-                  stats.totalRevenue
-                )}
-              </p>
-
-              <p className="text-sm text-gray-500 mt-1">
-                Tracked across{" "}
-                {stats.totalClients}{" "}
-                clients
-              </p>
-
-            </CardContent>
-
-          </Card>
-
-
-          <Card className="border-0 shadow-sm lg:col-span-2">
-
-            <CardHeader className="pb-2">
-
-              <CardTitle className="text-base">
-                Live Applicant Pipeline
-              </CardTitle>
-
-            </CardHeader>
-
-            <CardContent>
-
-              <div className="grid grid-cols-3 sm:grid-cols-7 gap-3">
-
-                {[
-                  [
-                    "shortlisted",
-                    "Shortlisted",
-                    "text-teal-600",
-                  ],
-
-                  [
-                    "applied",
-                    "Applied",
-                    "text-blue-600",
-                  ],
-
-                  [
-                    "screening",
-                    "Screening",
-                    "text-purple-600",
-                  ],
-
-                  [
-                    "interview",
-                    "Interview",
-                    "text-yellow-600",
-                  ],
-
-                  [
-                    "offer",
-                    "Offer",
-                    "text-orange-600",
-                  ],
-
-                  [
-                    "hired",
-                    "Hired",
-                    "text-green-600",
-                  ],
-
-                  [
-                    "rejected",
-                    "Rejected",
-                    "text-red-600",
-                  ],
-                ].map(
-                  ([
-                    key,
-                    label,
-                    color,
-                  ]) => (
+          {/* LIVE STATS */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              {
+                label: 'Active Clients',
+                value: stats.activeClients,
+                sub: `${stats.totalClients} total clients`,
+                icon: Building2,
+                color: 'bg-blue-50 text-blue-600',
+              },
+              {
+                label: 'Open Jobs',
+                value: stats.openJobs,
+                sub: `${stats.totalJobs} total jobs`,
+                icon: Briefcase,
+                color: 'bg-green-50 text-green-600',
+              },
+              {
+                label: 'Candidates',
+                value: stats.totalCandidates,
+                sub: `${stats.shortlisted} shortlisted`,
+                icon: Users,
+                color: 'bg-purple-50 text-purple-600',
+              },
+              {
+                label: 'Hired',
+                value: stats.hired,
+                sub: `${stats.offer} offers`,
+                icon: UserCheck,
+                color: 'bg-red-50 text-red-600',
+              },
+            ].map((statistic, index) => (
+              <motion.div
+                key={statistic.label}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
+              >
+                <Card className="border-0 shadow-sm">
+                  <CardContent className="p-5 flex items-center gap-4">
                     <div
-                      key={key}
-                      className="text-center bg-gray-50 rounded-lg p-3"
+                      className={`w-12 h-12 rounded-xl flex items-center justify-center ${statistic.color}`}
                     >
-
-                      <p
-                        className={`text-xl font-bold ${color}`}
-                      >
-                        {
-                          pipeline[
-                            key
-                          ]
-                        }
-                      </p>
-
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        {label}
-                      </p>
-
+                      <statistic.icon className="w-6 h-6" />
                     </div>
-                  )
+                    <div>
+                      <p className="text-2xl font-bold">{statistic.value}</p>
+                      <p className="text-sm font-medium text-gray-700">
+                        {statistic.label}
+                      </p>
+                      <p className="text-xs text-gray-400">{statistic.sub}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* SUBSCRIPTION / ACCOUNT */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Card className="border-0 shadow-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <DollarSign className="w-5 h-5 text-red-600" />
+                  Subscription Revenue
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold text-red-600">
+                  {formatCurrency(stats.totalRevenue)}
+                </p>
+                <p className="text-sm text-gray-500 mt-2">
+                  Active subscription amount
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CreditCard className="w-5 h-5 text-blue-600" />
+                  Active Subscription
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {subscriptions.filter(
+                  (subscription) =>
+                    normalizeStatus(subscription?.status) === 'active'
+                ).length > 0 ? (
+                  (() => {
+                    const activeSubscription = subscriptions.find(
+                      (subscription) =>
+                        normalizeStatus(subscription?.status) === 'active'
+                    );
+
+                    return (
+                      <>
+                        <p className="text-xl font-bold">
+                          {activeSubscription?.plan_name ||
+                            activeSubscription?.plan_id ||
+                            'Active Plan'}
+                        </p>
+                        <p className="text-sm text-gray-500 mt-1">
+                          {formatCurrency(activeSubscription?.amount)} / month
+                        </p>
+                        <p className="text-xs text-gray-400 mt-2">
+                          {activeSubscription?.active_jobs_limit || 0} active
+                          jobs ·{' '}
+                          {activeSubscription?.candidate_matches_limit || 0}{' '}
+                          candidate matches
+                        </p>
+                      </>
+                    );
+                  })()
+                ) : (
+                  <>
+                    <p className="text-xl font-bold">No Active Plan</p>
+                    <p className="text-sm text-gray-500 mt-2">
+                      No active subscription was found for this account.
+                    </p>
+                  </>
                 )}
+              </CardContent>
+            </Card>
 
+            <Card className="border-0 shadow-sm">
+              <CardHeader>
+                <CardTitle>Current Account</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="font-semibold">
+                  {profile?.full_name ||
+                    currentUser?.email ||
+                    'Authenticated User'}
+                </p>
+                <p className="text-sm text-gray-500 mt-1">
+                  Role:{' '}
+                  <span className="font-semibold text-gray-700">
+                    {profile?.role || 'User'}
+                  </span>
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* CANDIDATE PIPELINE */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader>
+              <CardTitle>Candidate Pipeline</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+                {[
+                  ['sourced', 'Sourced', 'text-gray-600'],
+                  ['applied', 'Applied', 'text-blue-600'],
+                  ['screening', 'Screening', 'text-purple-600'],
+                  ['shortlisted', 'Shortlisted', 'text-teal-600'],
+                  ['interview', 'Interview', 'text-yellow-600'],
+                  ['offer', 'Offer', 'text-orange-600'],
+                  ['hired', 'Hired', 'text-green-600'],
+                  ['rejected', 'Rejected', 'text-red-600'],
+                ].map(([key, label, color]) => (
+                  <div
+                    key={key}
+                    className="text-center bg-gray-50 rounded-lg p-3"
+                  >
+                    <p className={`text-xl font-bold ${color}`}>
+                      {stats[key] || 0}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">{label}</p>
+                  </div>
+                ))}
               </div>
-
             </CardContent>
-
           </Card>
 
-        </div>
-
-
-        {/* ==================================================
-            RECENT JOBS + APPLICANTS
-        ================================================== */}
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-          {/* RECENT JOBS */}
-
-          <Card className="border-0 shadow-sm">
-
-            <CardHeader className="flex flex-row items-center justify-between pb-3">
-
-              <CardTitle className="text-lg">
-                Recent Jobs
-              </CardTitle>
-
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-red-600"
-                onClick={() =>
-                  navigate(
-                    "/dashboard/jobs"
-                  )
-                }
-              >
-                View all
-
-                <ChevronRight className="w-4 h-4 ml-1" />
-
-              </Button>
-
-            </CardHeader>
-
-
-            <CardContent className="space-y-3">
-
-              {recentJobs.length ===
-                0 && (
-                <p className="text-sm text-gray-400 text-center py-6">
-                  No jobs yet. Add or paste a job post.
-                </p>
-              )}
-
-
-              {recentJobs.map(
-                (job) => (
-                  <div
-                    key={
-                      job.id
-                    }
-                    className="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors"
-                    onClick={() =>
-                      navigate(
-                        "/dashboard/jobs"
-                      )
-                    }
-                  >
-
-                    <div className="flex items-center gap-3 min-w-0">
-
-                      <div
-                        className={`
-                          w-10
-                          h-10
-                          rounded-lg
-                          flex
-                          items-center
-                          justify-center
-                          flex-shrink-0
-                          ${
-                            job.isPasted
-                              ? "bg-red-100"
-                              : "bg-red-50"
-                          }
-                        `}
-                      >
-
-                        {job.isPasted ? (
-                          <ClipboardPaste className="w-5 h-5 text-red-600" />
-                        ) : (
+          {/* RECENT JOBS / CANDIDATES */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Recent Jobs</CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-red-600"
+                  onClick={() => navigate('/dashboard/jobs')}
+                >
+                  View all
+                  <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {recentJobs.length === 0 ? (
+                  <p className="text-center text-sm text-gray-400 py-6">
+                    No jobs found for this account.
+                  </p>
+                ) : (
+                  recentJobs.map((job) => (
+                    <div
+                      key={job.id}
+                      className="flex items-center justify-between gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 cursor-pointer"
+                      onClick={() => navigate('/dashboard/jobs')}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0">
                           <Briefcase className="w-5 h-5 text-red-600" />
-                        )}
-
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium truncate">
+                              {getJobTitle(job)}
+                            </p>
+                            <Badge className={getStatusColor(job?.status)}>
+                              {job?.status || 'open'}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-gray-500 truncate">
+                            {job?.location || 'Location not specified'}
+                            {job?.work_mode ? ` · ${job.work_mode}` : ''}
+                          </p>
+                        </div>
                       </div>
-
-
-                      <div className="min-w-0">
-
-                        <p className="font-medium truncate">
-                          {
-                            job.title ||
-                            "Untitled Job"
-                          }
-                        </p>
-
-                        <p className="text-xs text-gray-500 truncate">
-                          {
-                            job.clientName ||
-                            "No client"
-                          }{" "}
-                          ·{" "}
-                          {
-                            job.location ||
-                            "No location"
-                          }
-                        </p>
-
-                      </div>
-
-                    </div>
-
-
-                    <div className="flex items-center gap-2 flex-shrink-0">
-
-                      {job.isPasted && (
-                        <Badge className="bg-red-600 text-white text-xs font-bold">
-                          PASTED
-                        </Badge>
-                      )}
-
-                      <Badge
-                        className={getStatusColor(
-                          job.status
-                        )}
-                      >
-                        {
-                          job.status ||
-                          "open"
-                        }
-                      </Badge>
-
-                      <span className="text-xs text-gray-400">
-                        {
-                          (
-                            job.applications ||
-                            []
-                          ).length
-                        }{" "}
-                        apps
+                      <span className="text-xs text-gray-400 flex-shrink-0">
+                        {formatRelative(job?.created_at)}
                       </span>
-
                     </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
 
-                  </div>
-                )
-              )}
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Recent Candidates</CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-red-600"
+                  onClick={() => navigate('/dashboard/candidates')}
+                >
+                  View all
+                  <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {recentCandidates.length === 0 ? (
+                  <p className="text-center text-sm text-gray-400 py-6">
+                    No candidates found for this account.
+                  </p>
+                ) : (
+                  recentCandidates.map((candidate) => {
+                    const stage = getCandidateStage(candidate);
 
-            </CardContent>
+                    return (
+                      <div
+                        key={candidate.id}
+                        className="flex items-center justify-between gap-3 p-3 rounded-lg bg-gray-50"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center flex-shrink-0">
+                            <Users className="w-5 h-5 text-purple-600" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium truncate">
+                                {getCandidateName(candidate)}
+                              </p>
+                              <Badge className={getStatusColor(stage)}>
+                                {stage}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-gray-500 truncate">
+                              {candidate?.title ||
+                                candidate?.industry ||
+                                'Candidate'}
+                              {candidate?.match_score
+                                ? ` · ${candidate.match_score}% match`
+                                : ''}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="text-xs text-gray-400 flex-shrink-0">
+                          {formatRelative(candidate?.created_at)}
+                        </span>
+                      </div>
+                    );
+                  })
+                )}
+              </CardContent>
+            </Card>
+          </div>
 
-          </Card>
-
-
-          {/* RECENT APPLICANTS */}
-
+          {/* RECENT CLIENTS */}
           <Card className="border-0 shadow-sm">
-
-            <CardHeader className="flex flex-row items-center justify-between pb-3">
-
-              <CardTitle className="text-lg">
-                Recent Applicants
-              </CardTitle>
-
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Recent Clients</CardTitle>
               <Button
                 variant="ghost"
                 size="sm"
                 className="text-red-600"
-                onClick={() =>
-                  navigate(
-                    "/dashboard/jobs"
-                  )
-                }
+                onClick={() => navigate('/dashboard/clients')}
               >
-                View all
-
+                Open CRM
                 <ChevronRight className="w-4 h-4 ml-1" />
-
               </Button>
-
             </CardHeader>
-
-
-            <CardContent className="space-y-3">
-
-              {recentApplicants.length ===
-                0 && (
+            <CardContent>
+              {recentClients.length === 0 ? (
                 <p className="text-sm text-gray-400 text-center py-6">
-                  No applicants yet. Add candidates from Job Listings.
+                  No clients found for this account.
                 </p>
-              )}
-
-
-              {recentApplicants.map(
-                (app, index) => (
-                  <div
-                    key={
-                      app.id ||
-                      index
-                    }
-                    className="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
-                  >
-
-                    <div className="min-w-0">
-
-                      <div className="flex items-center gap-2 flex-wrap">
-
-                        <p className="font-medium truncate">
-                          {
-                            app.name ||
-                            "Unnamed Applicant"
-                          }
-                        </p>
-
-                        <Badge
-                          className={getStatusColor(
-                            app.status
-                          )}
-                        >
-                          {
-                            app.status ||
-                            "applied"
-                          }
-                        </Badge>
-
-                        {app.profileText && (
-                          <Badge
-                            variant="outline"
-                            className="text-teal-700 border-teal-300 text-xs"
-                          >
-                            Profile
-                          </Badge>
-                        )}
-
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  {recentClients.map((client) => (
+                    <div
+                      key={client.id}
+                      className="p-4 rounded-lg bg-gray-50 hover:bg-gray-100 cursor-pointer"
+                      onClick={() => navigate('/dashboard/clients')}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                          <Building2 className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">
+                            {getClientName(client)}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge className={getStatusColor(client?.status)}>
+                              {client?.status || 'active'}
+                            </Badge>
+                          </div>
+                        </div>
                       </div>
-
-
-                      <p className="text-xs text-gray-500 truncate mt-0.5">
-                        {
-                          app.jobTitle
-                        }
-                      </p>
-
-                    </div>
-
-
-                    <span className="text-xs text-gray-400 flex-shrink-0">
-                      {formatRelative(
-                        app.appliedAt
+                      {client?.contact_name && (
+                        <p className="text-xs text-gray-500 mt-3 truncate">
+                          Contact: {client.contact_name}
+                        </p>
                       )}
-                    </span>
-
-                  </div>
-                )
+                    </div>
+                  ))}
+                </div>
               )}
-
             </CardContent>
-
           </Card>
 
-        </div>
-
-
-        {/* ==================================================
-            QUICK ACTIONS
-        ================================================== */}
-
-        <Card className="border-0 shadow-sm">
-
-          <CardHeader>
-
-            <CardTitle className="text-lg">
-              Quick Actions
-            </CardTitle>
-
-          </CardHeader>
-
-
-          <CardContent>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-
-              {/* JOBS */}
-
-              <Button
-                className="h-auto py-4 flex-col gap-2 bg-red-600 hover:bg-red-700"
-                onClick={() =>
-                  navigate(
-                    "/dashboard/jobs"
-                  )
-                }
-              >
-
-                <ClipboardPaste className="w-5 h-5" />
-
-                <span className="text-sm">
-                  Paste Job Post
-                </span>
-
-              </Button>
-
-
-              {/* APPLICANT */}
-
-              <Button
-                variant="outline"
-                className="h-auto py-4 flex-col gap-2 border-red-200 text-red-700 hover:bg-red-50"
-                onClick={() =>
-                  navigate(
-                    "/dashboard/jobs"
-                  )
-                }
-              >
-
-                <UserPlus className="w-5 h-5" />
-
-                <span className="text-sm">
-                  Add Applicant
-                </span>
-
-              </Button>
-
-
-              {/* CLIENTS */}
-
-              <Button
-                variant="outline"
-                className="h-auto py-4 flex-col gap-2"
-                onClick={() =>
-                  navigate(
-                    "/dashboard/clients"
-                  )
-                }
-              >
-
-                <Building2 className="w-5 h-5" />
-
-                <span className="text-sm">
-                  Clients CRM
-                </span>
-
-              </Button>
-
-
-              {/* AI CLIENT FINDER */}
-
-              {canAccessGrowth ? (
+          {/* QUICK ACTIONS */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader>
+              <CardTitle>Quick Actions</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <Button
+                  className="h-auto py-4 flex-col gap-2 bg-red-600 hover:bg-red-700"
+                  onClick={() => navigate('/dashboard/jobs')}
+                >
+                  <Briefcase className="w-5 h-5" />
+                  <span className="text-sm">Post Job</span>
+                </Button>
 
                 <Button
                   variant="outline"
                   className="h-auto py-4 flex-col gap-2"
-                  onClick={() =>
-                    handleGrowthFeature(
-                      "/dashboard/aiclientfinder"
-                    )
-                  }
+                  onClick={() => navigate('/dashboard/candidates/add')}
                 >
-
-                  <Star className="w-5 h-5" />
-
-                  <span className="text-sm">
-                    AI Lead Finder
-                  </span>
-
+                  <UserPlus className="w-5 h-5" />
+                  <span className="text-sm">Add Applicant</span>
                 </Button>
-
-              ) : (
 
                 <Button
                   variant="outline"
-                  className="h-auto py-4 flex-col gap-2 opacity-60"
-                  onClick={() =>
-                    navigate(
-                      "/pricing"
-                    )
-                  }
+                  className="h-auto py-4 flex-col gap-2"
+                  onClick={() => navigate('/dashboard/clients')}
                 >
-
-                  <Lock className="w-5 h-5" />
-
-                  <span className="text-sm">
-                    AI Lead Finder
-                  </span>
-
-                  <span className="text-xs text-red-600">
-                    Growth Required
-                  </span>
-
+                  <Building2 className="w-5 h-5" />
+                  <span className="text-sm">Clients CRM</span>
                 </Button>
 
-              )}
+                <Button
+                  variant="outline"
+                  className="h-auto py-4 flex-col gap-2"
+                  onClick={() => navigate('/dashboard/aiclientfinder')}
+                >
+                  <Star className="w-5 h-5" />
+                  <span className="text-sm">AI Client Finder</span>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
 
-            </div>
+          {/* DATABASE STATUS */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-base">Live Data Connection</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                {[
+                  ['Profile', queryStatus.profile],
+                  ['Clients', queryStatus.clients],
+                  ['Jobs', queryStatus.jobs],
+                  ['Candidates', queryStatus.candidates],
+                  ['Subscriptions', queryStatus.subscriptions],
+                ].map(([label, status]) => {
+                  const key = label.toLowerCase();
+                  const success = status === 'success';
+                  const empty = status === 'empty';
+                  const failed = status === 'error';
 
-          </CardContent>
+                  return (
+                    <div
+                      key={label}
+                      className="rounded-lg border bg-gray-50 p-3"
+                    >
+                      <p className="text-xs text-gray-500">{label}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        {success && (
+                          <CheckCircle2 className="w-4 h-4 text-green-600" />
+                        )}
+                        {empty && (
+                          <AlertCircle className="w-4 h-4 text-yellow-600" />
+                        )}
+                        {failed && (
+                          <AlertCircle className="w-4 h-4 text-red-600" />
+                        )}
+                        {status === 'loading' && (
+                          <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                        )}
+                        <span className="text-sm font-medium capitalize">
+                          {status}
+                        </span>
+                      </div>
+                      {queryErrors[key] && (
+                        <p className="text-[11px] text-red-600 mt-2 break-words">
+                          {queryErrors[key]}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
 
-        </Card>
-
-
-        {/* ==================================================
-            LIVE INDICATOR
-        ================================================== */}
-
-        <div className="flex items-center justify-center gap-2 text-xs text-gray-400">
-
-          <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-
-          Live data · refreshes every 3 seconds · last update{" "}
-
-          {lastUpdated.toLocaleTimeString(
-            "en-ZA"
-          )}
-
+          {/* FOOTER */}
+          <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-gray-400 pb-4">
+            <span
+              className={`w-2 h-2 rounded-full ${
+                realtimeConnected
+                  ? 'bg-green-500 animate-pulse'
+                  : 'bg-yellow-500'
+              }`}
+            />
+            <span>
+              {realtimeConnected
+                ? 'LIVE — Supabase Realtime'
+                : 'Supabase Realtime connecting'}
+            </span>
+            {lastUpdated && (
+              <span>
+                · Updated {lastUpdated.toLocaleTimeString('en-ZA')}
+              </span>
+            )}
+          </div>
         </div>
-
-      </div>
-
+      </main>
     </div>
   );
 }

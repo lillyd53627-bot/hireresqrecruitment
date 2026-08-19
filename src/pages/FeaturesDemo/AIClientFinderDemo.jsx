@@ -179,7 +179,7 @@ export default function AIClientFinderDemo() {
             Unlock Full AI Client Finder
           </a>
           <p className="mt-6 text-gray-600 text-lg">
-            Get real-time hiring signals, company insights & lead generation — start your free trial today.
+            Get real-time hiring signals, company insights & lead generation.
           </p>
         </div>
       </main>
