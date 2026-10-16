@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>PA Ward 69 Membership</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0d4f1c;
+      color: #fff;
+      min-height: 100vh;
+      padding: 12px;
+    }
+    .card {
+      max-width: 420px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+    }
+    .header {
+      background: linear-gradient(135deg, #1a7a2e 0%, #0d4f1c 100%);
+      padding: 18px 16px 14px;
+      text-align: center;
+      position: relative;
+    }
+    .header::after {
+      content: "";
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 6px;
+      background: #c5e017;
+    }
+    .logo-text {
+      font-size: 28px;
+      font-weight: 900;
+      letter-spacing: -1px;
+      color: #fff;
+      line-height: 1;
+    }
+    .logo-text span { color: #c5e017; }
+    .pa-badge {
+      display: inline-block;
+      background: #c5e017;
+      color: #0d4f1c;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 3px 10px;
+      border-radius: 20px;
+      margin-top: 6px;
+      letter-spacing: 0.5px;
+    }
+    .date {
+      margin-top: 10px;
+      font-size: 15px;
+      font-weight: 700;
+      color: #c5e017;
+    }
+    .tagline {
+      font-size: 13px;
+      font-weight: 600;
+      margin-top: 4px;
+      opacity: 0.95;
+    }
+    .body {
+      padding: 18px 16px 20px;
+      color: #222;
+    }
+    .ward {
+      background: #e8f5e9;
+      color: #1a7a2e;
+      font-weight: 700;
+      font-size: 13px;
+      text-align: center;
+      padding: 8px;
+      border-radius: 8px;
+      margin-bottom: 14px;
+    }
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: #333;
+    }
+    input[type="text"],
+    input[type="tel"] {
+      width: 100%;
+      padding: 11px 12px;
+      border: 1.5px solid #ccc;
+      border-radius: 8px;
+      font-size: 15px;
+      margin-bottom: 12px;
+      outline: none;
+    }
+    input:focus { border-color: #1a7a2e; }
+    .consent {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      margin-bottom: 12px;
+      font-size: 13px;
+      line-height: 1.35;
+      color: #333;
+    }
+    .consent input {
+      margin-top: 3px;
+      width: 18px;
+      height: 18px;
+      accent-color: #1a7a2e;
+      flex-shrink: 0;
+    }
+    button {
+      width: 100%;
+      background: #1a7a2e;
+      color: #fff;
+      border: none;
+      padding: 14px;
+      font-size: 16px;
+      font-weight: 700;
+      border-radius: 10px;
+      cursor: pointer;
+      margin-top: 6px;
+    }
+    button:disabled {
+      background: #888;
+    }
+    .note {
+      text-align: center;
+      font-size: 11px;
+      color: #666;
+      margin-top: 12px;
+    }
+    .success {
+      display: none;
+      text-align: center;
+      padding: 30px 16px;
+      color: #1a7a2e;
+    }
+    .success h2 { font-size: 20px; margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <div class="logo-text">v<span>o</span>te</div>
+      <div class="pa-badge">PATRIOTIC ALLIANCE</div>
+      <div class="date">04 NOVEMBER 2026</div>
+      <div class="tagline">GET IN POSITION. MAKE YOUR VOTE COUNT</div>
+    </div>
+
+    <div class="body" id="formArea">
+      <div class="ward">WARD 69 MEMBERSHIP / REGISTRATION</div>
+
+      <form id="paForm">
+        <label>Full Names</label>
+        <input type="text" name="fullNames" required placeholder="First name(s)" />
+
+        <label>Surname</label>
+        <input type="text" name="surname" required placeholder="Surname" />
+
+        <label>ID Number</label>
+        <input type="text" name="idNumber" required placeholder="13-digit ID number" maxlength="13" />
+
+        <label>Address (Ward 69)</label>
+        <input type="text" name="address" required placeholder="Street address / area" />
+
+        <label>Phone Number</label>
+        <input type="tel" name="phone" required placeholder="e.g. 082 123 4567" />
+
+        <div class="consent">
+          <input type="checkbox" id="consentReg" required />
+          <label for="consentReg" style="font-weight:500; margin:0">
+            I consent to being registered as a Patriotic Alliance member / supporter for Ward 69.
+          </label>
+        </div>
+
+        <div class="consent">
+          <input type="checkbox" id="consentPopia" required />
+          <label for="consentPopia" style="font-weight:500; margin:0">
+            I give POPIA consent for my personal information to be collected and used for membership and election-related communication by the Patriotic Alliance.
+          </label>
+        </div>
+
+        <button type="submit" id="submitBtn">SUBMIT – JOIN WARD 69</button>
+      </form>
+
+      <p class="note">Only for residents of Ward 69 · Short form for WhatsApp</p>
+    </div>
+
+    <div class="success" id="successArea">
+      <h2>Thank you!</h2>
+      <p>Your details have been received.<br>We will be in contact soon.</p>
+      <p style="margin-top:12px; font-size:13px; color:#555">
+        Patriotic Alliance – Ward 69<br>04 November 2026
+      </p>
+    </div>
+  </div>
+
+  <script>
+    // ========== PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE ==========
+    const SCRIPT_URL = "https://script.google.com/macros/s/YOUR_SCRIPT_ID_HERE/exec";
+    // ====================================================================
+
+    document.getElementById("paForm").addEventListener("submit", async function(e) {
+      e.preventDefault();
+
+      const btn = document.getElementById("submitBtn");
+      btn.disabled = true;
+      btn.textContent = "Submitting...";
+
+      const form = e.target;
+      const payload = {
+        fullNames: form.fullNames.value.trim(),
+        surname: form.surname.value.trim(),
+        idNumber: form.idNumber.value.trim(),
+        address: form.address.value.trim(),
+        phone: form.phone.value.trim(),
+        consentRegistration: true,
+        consentPOPIA: true,
+        ward: "69"
+      };
+
+      try {
+        await fetch(SCRIPT_URL, {
+          method: "POST",
+          mode: "no-cors",          // required for Google Apps Script
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        // Show success (no-cors means we can't read the response, but the data is sent)
+        document.getElementById("formArea").style.display = "none";
+        document.getElementById("successArea").style.display = "block";
+      } catch (err) {
+        alert("Something went wrong. Please try again or contact the organiser.");
+        btn.disabled = false;
+        btn.textContent = "SUBMIT – JOIN WARD 69";
+      }
+    });
+  </script>
+</body>
+</html>

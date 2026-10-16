@@ -28,9 +28,13 @@ export default function Candidates() {
   const [savingAssignment, setSavingAssignment] = useState(false);
   const [assignmentMessage, setAssignmentMessage] = useState('');
 
+  // Vacancy linking
+  const [vacancies, setVacancies] = useState([]);
+  const [selectedVacancyId, setSelectedVacancyId] = useState('');
+
   const fileInputRef = useRef(null);
 
-  // FILTER STATES (unchanged)
+  // FILTER STATES
   const [province, setProvince] = useState('ALL');
   const [city, setCity] = useState('ALL');
   const [education, setEducation] = useState('ALL');
@@ -51,28 +55,36 @@ export default function Candidates() {
     'Western Cape': ['ALL', 'Cape Town', 'Stellenbosch', 'Paarl', 'George', 'Worcester', 'Mossel Bay', 'Knysna', 'Hermanus', 'Somerset West', 'Bellville', 'Strand', 'Saldanha']
   };
 
-  // FETCH candidates and identify the signed-in user.
+  // FETCH candidates + vacancies + current user
   useEffect(() => {
     const fetchData = async () => {
       const { data: authData } = await supabase.auth.getUser();
-      setCurrentUser(authData?.user || null);
+      const user = authData?.user || null;
+      setCurrentUser(user);
 
       const { data, error } = await supabase.from('candidates').select('*');
       if (error) {
         console.error("Supabase error:", error);
         setCandidates([]);
         setFiltered([]);
-        return;
+      } else {
+        console.log(`Fetched ${data?.length || 0} candidates`);
+        setCandidates(data || []);
       }
 
-      console.log(`Fetched ${data?.length || 0} candidates`);
-      setCandidates(data || []);
+      // Load open vacancies for the current recruiter
+      if (user) {
+        const { data: vacData } = await supabase
+          .from('recruiter_vacancies')
+          .select('id, title, location, status')
+          .eq('recruiter_id', user.id)
+          .order('created_at', { ascending: false });
+        setVacancies(vacData || []);
+      }
     };
     fetchData();
   }, []);
 
-  // Search + dashboard filters. Ownership supports common column names
-  // without requiring a database migration before the UI can be used.
   const getOwnerId = (candidate) =>
     candidate.user_id ||
     candidate.assigned_user_id ||
@@ -90,7 +102,6 @@ export default function Candidates() {
   const myCandidates = useMemo(() => {
     if (!currentUser?.id) return candidates;
     const owned = candidates.filter(c => getOwnerId(c) === currentUser.id);
-    // If legacy rows have no owner, keep them visible rather than hiding data.
     const unassigned = candidates.filter(c => !getOwnerId(c));
     return [...owned, ...unassigned];
   }, [candidates, currentUser]);
@@ -178,7 +189,7 @@ export default function Candidates() {
     setJobFilter('ALL');
   };
 
-  // CV UPLOAD - Your logic
+  // CV UPLOAD – now links to selected vacancy
   const handleCVUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -204,6 +215,8 @@ export default function Candidates() {
         return;
       }
 
+      const chosenVacancy = vacancies.find(v => v.id === selectedVacancyId);
+
       const { error } = await supabase.from('candidates').insert([{
         name: parsed.name || "Unknown",
         title: parsed.title || "",
@@ -218,7 +231,10 @@ export default function Candidates() {
         salary: parsed.salary || null,
         status: 'new',
         assigned_user_id: currentUser?.id || null,
-        created_by: currentUser?.id || null
+        created_by: currentUser?.id || null,
+        vacancy_id: selectedVacancyId || null,
+        job_title: chosenVacancy?.title || parsed.title || null,
+        applied_for: chosenVacancy?.title || null
       }]);
 
       if (error) {
@@ -227,18 +243,21 @@ export default function Candidates() {
         return;
       }
 
-      alert("✅ CV parsed & candidate added");
-      window.location.reload();
+      alert("✅ CV parsed & candidate added" + (chosenVacancy ? ` → linked to “${chosenVacancy.title}”` : ""));
+      // Refresh list without full page reload
+      const { data } = await supabase.from('candidates').select('*');
+      setCandidates(data || []);
+      setSelectedVacancyId('');
 
     } catch (err) {
       console.error(err);
       alert("Error uploading CV");
     } finally {
       setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
-  // CV PREVIEW
   const handleCvPreview = (candidate) => {
     if (candidate.cv_file_path) {
       setPreviewCv(candidate.cv_file_path);
@@ -254,13 +273,18 @@ export default function Candidates() {
     alert("Search saved!");
   };
 
+  const getVacancyTitle = (vacancyId) => {
+    const v = vacancies.find(x => x.id === vacancyId);
+    return v ? v.title : null;
+  };
+
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6 pl-72">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Candidate Dashboard</h1>
           <p className="text-sm text-gray-500">
-            Track, filter and manage candidates assigned to each recruiter.
+            Track, filter and manage candidates. New candidates can be linked directly to a vacancy.
           </p>
         </div>
         <Tabs value={viewMode} onValueChange={setViewMode}>
@@ -297,7 +321,7 @@ export default function Candidates() {
           placeholder="Search by title or name (e.g. sales manager, john)"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="flex-1"
+          className="flex-1 min-w-[200px]"
         />
         <Button className="bg-blue-600 hover:bg-blue-700">Search</Button>
         <Button onClick={saveSearch} className="bg-red-600 hover:bg-red-700">Save Search</Button>
@@ -330,14 +354,31 @@ export default function Candidates() {
             {savingAssignment ? 'Assigning...' : `Assign ${selectedIds.length} to me`}
           </Button>
         )}
+      </div>
 
-        {/* CV Upload Button - Fixed with ref */}
-        <Button 
-          disabled={uploading} 
+      {/* Vacancy linker + CV Upload */}
+      <div className="flex flex-wrap items-center gap-3 p-4 bg-slate-50 rounded-xl border">
+        <div className="text-sm font-medium text-gray-700">Link new candidate to vacancy:</div>
+        <Select value={selectedVacancyId} onValueChange={setSelectedVacancyId}>
+          <SelectTrigger className="w-[280px]">
+            <SelectValue placeholder="Select vacancy (optional)" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">No vacancy yet</SelectItem>
+            {vacancies.map(v => (
+              <SelectItem key={v.id} value={v.id}>
+                {v.title}{v.location ? ` · ${v.location}` : ''}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Button
+          disabled={uploading}
           className="bg-green-600 hover:bg-green-700"
           onClick={() => fileInputRef.current?.click()}
         >
-          {uploading ? 'Uploading...' : 'Upload CV'}
+          {uploading ? 'Uploading...' : 'Upload CV & Add Candidate'}
         </Button>
         <input
           ref={fileInputRef}
@@ -346,9 +387,14 @@ export default function Candidates() {
           onChange={handleCVUpload}
           className="hidden"
         />
+        {selectedVacancyId && (
+          <span className="text-xs text-green-700 bg-green-50 px-2 py-1 rounded">
+            Will be linked to selected vacancy
+          </span>
+        )}
       </div>
 
-      {/* Rest of your file remains unchanged - filters, gender buttons, sliders, results, etc. */}
+      {/* Location / education filters */}
       <div className="grid md:grid-cols-4 gap-4">
         <Select value={province} onValueChange={(value) => { setProvince(value); setCity('ALL'); }}>
           <SelectTrigger><SelectValue placeholder="Province" /></SelectTrigger>
@@ -422,6 +468,8 @@ export default function Candidates() {
             const owner = getOwnerId(c);
             const isMine = currentUser?.id && owner === currentUser.id;
             const jobTitle = c.job_title || c.jobTitle || c.position || c.applied_for;
+            const linkedVacancyTitle = c.vacancy_id ? getVacancyTitle(c.vacancy_id) : null;
+
             return (
               <Card key={c.id} className="border-0 shadow-sm hover:shadow-md transition-shadow">
                 <CardContent className="p-4">
@@ -447,6 +495,13 @@ export default function Candidates() {
                           {isMine ? 'Assigned to me' : owner ? 'Assigned to another user' : 'Unassigned'}
                         </span>
                       </div>
+                      {linkedVacancyTitle && (
+                        <div className="mt-2">
+                          <Badge className="bg-blue-50 text-blue-700 border-blue-200">
+                            Linked vacancy: {linkedVacancyTitle}
+                          </Badge>
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <Button variant="outline" onClick={() => setSelectedCandidate(c)}>

@@ -6,6 +6,7 @@ import {
   Outlet,
   useLocation,
 } from "react-router-dom";
+
 import { supabase } from "./lib/supabase";
 
 // ============================================================
@@ -22,6 +23,8 @@ import TermsOfService from "./pages/TermsOfService";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import Security from "./pages/Security";
 import POPIA from "./pages/POPIA";
+import Partners from "./pages/Partners";
+import PartnerRegister from "./pages/PartnerRegister";
 
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -65,6 +68,21 @@ import Settings from "./pages/Dashboard/Settings";
 import AdminDashboard from "./pages/Dashboard/AdminDashboard";
 import SmartReporting from "./pages/Dashboard/SmartReporting";
 import AIVideoScreening from "./pages/Dashboard/AIVideoScreening";
+import AIVoiceAgent from "./pages/Dashboard/AIVoiceAgent";
+import AICalls from "./pages/Dashboard/AICalls";
+import CandidateProfile from "./pages/Candidate/Profile";
+import PublicCandidates from "./pages/Dashboard/PublicCandidates";
+
+// Public Job Board pages
+import CandidateRegister from "./pages/CandidateRegister";
+import PostJob from "./pages/PostJob";
+import CandidateDirectory from "./pages/CandidateDirectory";
+
+// Independent Recruiter pages
+import RecruiterDashboard from "./pages/Dashboard/RecruiterDashboard";
+import RecruiterLeads from "./pages/Dashboard/RecruiterLeads";
+import RecruiterVacancies from "./pages/Dashboard/RecruiterVacancies";
+import RecruiterPlacements from "./pages/Dashboard/RecruiterPlacements";
 
 // ============================================================
 // AUTHENTICATED DASHBOARD GUARD
@@ -89,7 +107,7 @@ function DashboardAuthGuard() {
         setSession(session);
         setLoading(false);
       } catch (error) {
-        console.error("Unable to load Supabase session:", error);
+        console.error("Unable to load authentication session:", error);
 
         if (mounted) {
           setSession(null);
@@ -156,6 +174,10 @@ export default function App() {
       <Route path="/contact" element={<Contact />} />
       <Route path="/faq" element={<FAQ />} />
 
+      {/* PARTNERS — public */}
+      <Route path="/partners" element={<Partners />} />
+      <Route path="/partners/register/:type" element={<PartnerRegister />} />
+
       {/* AUTHENTICATION */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
@@ -178,35 +200,55 @@ export default function App() {
       <Route path="/demo/job-tracker" element={<JobTrackerDemo />} />
       <Route path="/demo/automated-invoicing" element={<AIAutomatedInvoicingDemo />} />
 
-      {/* PAID CRM / DASHBOARD */}
+      {/* PUBLIC JOB BOARD — direct links work when vercel.json is set */}
+      <Route path="/candidate-register" element={<CandidateRegister />} />
+      <Route path="/post-job" element={<PostJob />} />
+      <Route path="/candidates" element={<CandidateDirectory />} />
+
+      {/* AUTHENTICATED DASHBOARD */}
       <Route element={<DashboardAuthGuard />}>
         <Route path="/dashboard" element={<DashboardLayout />}>
           <Route index element={<DashboardHome />} />
 
           <Route path="candidates" element={<Candidates />} />
           <Route path="candidates/add" element={<AddApplicant />} />
+          <Route path="public-candidates" element={<PublicCandidates />} />
 
           <Route path="jobs" element={<JobTracker />} />
           <Route path="jobtracker" element={<JobTracker />} />
 
           <Route path="clients" element={<Clients />} />
+          <Route path="companies" element={<Companies />} />
+
           <Route path="outreach" element={<Outreach />} />
           <Route path="interviews" element={<Interviews />} />
+
           <Route path="analytics" element={<AISmartReporting />} />
+          <Route path="smart-reporting" element={<SmartReporting />} />
+
           <Route path="aiclientfinder" element={<AIClientFinder />} />
           <Route path="aisourcing" element={<AISourcing />} />
           <Route path="aiassistant" element={<AIAssistant />} />
+          <Route path="video-screening" element={<AIVideoScreening />} />
+
           <Route path="onboarding" element={<OnboardingWorkflows />} />
           <Route path="onboardingworkflows" element={<OnboardingWorkflows />} />
+
           <Route path="settings" element={<Settings />} />
           <Route path="admin" element={<AdminDashboard />} />
-          <Route path="companies" element={<Companies />} />
-          <Route path="smart-reporting" element={<SmartReporting />} />
-          <Route path="video-screening" element={<AIVideoScreening />} />
+
+          <Route path="ai-voice" element={<AIVoiceAgent />} />
+          <Route path="ai-calls" element={<AICalls />} />
+
+          <Route path="recruiter" element={<RecruiterDashboard />} />
+          <Route path="recruiter/leads" element={<RecruiterLeads />} />
+          <Route path="recruiter/vacancies" element={<RecruiterVacancies />} />
+          <Route path="recruiter/placements" element={<RecruiterPlacements />} />
         </Route>
+
+        <Route path="/candidate/profile" element={<CandidateProfile />} />
       </Route>
 
-      {/* UNKNOWN ROUTES */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

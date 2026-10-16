@@ -1,297 +1,202 @@
 // src/services/enrichment.js
-
 /**
- * Real API Enrichment Service
- * Supports: Apollo.io + Hunter.io
- * Falls back to enhanced mock data when no API keys / backend is available.
- */
-
-/**
- * Real API Enrichment Service
+ * HireResQ – Real API Enrichment Service
+ *
  * Apollo + Hunter are accessed ONLY through the Express backend.
+ * There is NO mock / fake company fallback.
+ *
+ * Success → real data
+ * Failure → throw Error (UI must show the error)
  */
 
-const USE_REAL_APIS = true;
+const API_BASE = '/api/enrichment';
 
 // ─────────────────────────────────────────────
-// Helper: Call your backend proxy
+// Helper: call backend proxy
 // ─────────────────────────────────────────────
 async function proxyFetch(endpoint, body = {}) {
-  const res = await fetch(`/api/enrichment/${endpoint}`, {
+  const res = await fetch(`${API_BASE}/${endpoint}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || `Enrichment failed (${res.status})`);
+  let data = {};
+  try {
+    data = await res.json();
+  } catch {
+    // non-JSON response
   }
-  return res.json();
+
+  if (!res.ok) {
+    throw new Error(
+      data.message ||
+        data.error ||
+        `Enrichment request failed (${res.status})`
+    );
+  }
+
+  return data;
 }
 
 // ─────────────────────────────────────────────
-// 1. Search for companies that are hiring
+// 1. Search companies currently hiring
 // ─────────────────────────────────────────────
 export async function searchHiringCompanies({
   query = '',
   location = '',
   industry = '',
   page = 1,
+  perPage = 25,
 } = {}) {
-  // If no backend / keys → return mock data
-  if (!USE_REAL_APIS) {
-    return getMockLeads({ query, location, industry });
+  const data = await proxyFetch('companies', {
+    q: query,
+    location,
+    industry,
+    page,
+    per_page: perPage,
+  });
+
+  const orgs = data.organizations || data.companies || [];
+
+  if (!Array.isArray(orgs) || orgs.length === 0) {
+    return [];
   }
 
-  try {
-    const data = await proxyFetch('companies', {
-      q: query,
-      location,
-      industry,
-      page,
-    });
-
-    return (data.organizations || []).map(mapApolloCompany);
-  } catch (err) {
-    console.error('Company search failed:', err);
-    // Fallback to mock so the UI never breaks
-    return getMockLeads({ query, location, industry });
-  }
+  return orgs.map(mapApolloCompany);
 }
 
 // ─────────────────────────────────────────────
-// 2. Enrich a single company (people + emails)
+// 2. Enrich one company (people + emails)
 // ─────────────────────────────────────────────
 export async function enrichCompany(company) {
-  if (!USE_REAL_APIS) {
-    return enhanceMockLead(company);
+  if (!company?.name && !company?.website) {
+    throw new Error('Company name or website is required for enrichment.');
   }
 
-  try {
-    const [peopleData, emailData] = await Promise.all([
-      proxyFetch('people', {
-        organization_name: company.name,
-        domain: company.website,
-      }),
-      company.website
-        ? proxyFetch('emails', { domain: company.website })
-        : Promise.resolve({ emails: [] }),
-    ]);
+  const [peopleData, emailData] = await Promise.all([
+    proxyFetch('people', {
+      organization_name: company.name,
+      domain: company.website || company.domain || null,
+    }),
+    company.website || company.domain
+      ? proxyFetch('emails', {
+          domain: (company.website || company.domain || '')
+            .replace(/^https?:\/\//, '')
+            .replace(/\/$/, ''),
+        })
+      : Promise.resolve({ emails: [] }),
+  ]);
 
-    const hiringManagers = (peopleData.people || [])
-      .filter((p) =>
-        /talent|recruit|hr|people|hiring|head of|director|cto|coo|founder|ceo/i.test(
-          p.title || ''
-        )
+  const people = peopleData.people || peopleData.contacts || [];
+
+  const hiringManagers = people
+    .filter((p) =>
+      /talent|recruit|hr|people|hiring|head of|director|cto|coo|founder|ceo|vp/i.test(
+        p.title || ''
       )
-      .slice(0, 5)
-      .map((p) => ({
-        name: `${p.first_name || ''} ${p.last_name || ''}`.trim(),
-        title: p.title || 'Unknown',
-        email: p.email || null,
-        linkedin: Boolean(p.linkedin_url),
-        linkedinUrl: p.linkedin_url || null,
-      }));
+    )
+    .slice(0, 8)
+    .map((p) => ({
+      name: `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Unknown',
+      title: p.title || 'Unknown',
+      email: p.email || null,
+      linkedin: Boolean(p.linkedin_url),
+      linkedinUrl: p.linkedin_url || null,
+    }));
 
-    const companyEmails = (emailData.emails || [])
-      .map((e) => e.value || e.email)
-      .filter(Boolean)
-      .slice(0, 6);
+  const companyEmails = (emailData.emails || [])
+    .map((e) => e.value || e.email)
+    .filter(Boolean)
+    .slice(0, 8);
 
-    const score = calculateLeadScore({
-      openRoles: company.openRoles || 0,
-      managersFound: hiringManagers.length,
-      emailsFound: companyEmails.length,
-      hasWebsite: Boolean(company.website),
-    });
+  const score = calculateLeadScore({
+    openRoles: company.openRoles || company.open_roles || 0,
+    managersFound: hiringManagers.length,
+    emailsFound: companyEmails.length,
+    hasWebsite: Boolean(company.website || company.domain),
+  });
 
-    return {
-      ...company,
-      hiringManagers,
-      companyEmails,
-      score,
-      enriched: true,
-      enrichedAt: new Date().toISOString(),
-    };
-  } catch (err) {
-    console.error('Enrichment failed:', err);
-    return enhanceMockLead(company);
-  }
+  return {
+    ...company,
+    hiringManagers,
+    companyEmails,
+    score,
+    enriched: true,
+    enrichedAt: new Date().toISOString(),
+    source: company.source || 'Apollo.io',
+  };
 }
 
 // ─────────────────────────────────────────────
-// 3. Find email for a specific person
+// 3. Find email for a specific person (Hunter)
 // ─────────────────────────────────────────────
 export async function findEmail({ firstName, lastName, domain }) {
-  if (!USE_REAL_APIS) return null;
-
-  try {
-    const data = await proxyFetch('email-finder', {
-      first_name: firstName,
-      last_name: lastName,
-      domain,
-    });
-    return data.email || null;
-  } catch {
-    return null;
+  if (!firstName || !lastName || !domain) {
+    throw new Error('firstName, lastName and domain are required.');
   }
+
+  const cleanDomain = domain
+    .replace(/^https?:\/\//, '')
+    .replace(/\/$/, '');
+
+  const data = await proxyFetch('email-finder', {
+    first_name: firstName,
+    last_name: lastName,
+    domain: cleanDomain,
+  });
+
+  return data.email || data.value || null;
 }
 
 // ─────────────────────────────────────────────
-// Scoring logic
+// Scoring
 // ─────────────────────────────────────────────
-function calculateLeadScore({ openRoles, managersFound, emailsFound, hasWebsite }) {
+function calculateLeadScore({
+  openRoles = 0,
+  managersFound = 0,
+  emailsFound = 0,
+  hasWebsite = false,
+}) {
   let score = 40;
-  score += Math.min(openRoles * 4, 25);
-  score += Math.min(managersFound * 8, 20);
-  score += Math.min(emailsFound * 3, 10);
+  score += Math.min(Number(openRoles) * 4, 25);
+  score += Math.min(Number(managersFound) * 8, 20);
+  score += Math.min(Number(emailsFound) * 3, 10);
   if (hasWebsite) score += 5;
   return Math.min(Math.round(score), 99);
 }
 
 // ─────────────────────────────────────────────
-// Apollo → our shape
+// Apollo organisation → HireResQ lead shape
 // ─────────────────────────────────────────────
 function mapApolloCompany(org) {
+  const website =
+    org.website_url?.replace(/^https?:\/\//, '') ||
+    org.primary_domain ||
+    org.domain ||
+    null;
+
   return {
-    id: org.id || org.organization_id,
-    name: org.name,
+    id: org.id || org.organization_id || website || org.name,
+    name: org.name || 'Unknown company',
     industry: org.industry || org.industries?.[0] || 'Unknown',
     location: org.city
-      ? `${org.city}${org.state ? ', ' + org.state : ''}`
+      ? `${org.city}${org.state ? `, ${org.state}` : ''}`
       : org.country || 'South Africa',
-    website: org.website_url?.replace(/^https?:\/\//, '') || org.primary_domain,
+    website,
+    domain: website,
     employees: org.estimated_num_employees
-      ? `${org.estimated_num_employees}`
+      ? String(org.estimated_num_employees)
       : 'Unknown',
     hiringSignal: org.actively_hiring ? 'High' : 'Medium',
-    openRoles: org.current_job_postings || 0,
+    openRoles: org.current_job_postings || org.num_job_postings || 0,
     score: 70,
     source: 'Apollo.io',
-    description: org.short_description || org.seo_description || '',
+    description:
+      org.short_description || org.seo_description || org.description || '',
     hiringManagers: [],
     companyEmails: [],
     recentJobs: [],
-  };
-}
-
-// ─────────────────────────────────────────────
-// Mock fallback (used when no API keys / backend)
-// ─────────────────────────────────────────────
-function getMockLeads({ query = '', location = '', industry = '' } = {}) {
-  const all = [
-    {
-      id: 1,
-      name: 'Nexus Digital Solutions',
-      industry: 'Technology',
-      location: 'Cape Town',
-      website: 'nexusdigital.co.za',
-      employees: '51-200',
-      hiringSignal: 'Very High',
-      openRoles: 9,
-      score: 94,
-      source: 'Mock (no API key)',
-      description: 'Fast-growing digital agency specialising in fintech and e-commerce.',
-      hiringManagers: [
-        { name: 'Lebo Molefe', title: 'Head of Talent', email: 'lebo.molefe@nexusdigital.co.za', linkedin: true },
-        { name: 'Sarah Chen', title: 'CTO', email: 'sarah.chen@nexusdigital.co.za', linkedin: true },
-      ],
-      companyEmails: ['careers@nexusdigital.co.za', 'talent@nexusdigital.co.za'],
-      recentJobs: ['Senior React Developer', 'Product Manager', 'DevOps Engineer'],
-    },
-    {
-      id: 2,
-      name: 'Apex Financial Group',
-      industry: 'Finance',
-      location: 'Johannesburg',
-      website: 'apexfg.co.za',
-      employees: '201-500',
-      hiringSignal: 'High',
-      openRoles: 6,
-      score: 89,
-      source: 'Mock (no API key)',
-      description: 'Leading independent financial services firm expanding its tech team.',
-      hiringManagers: [
-        { name: 'Thandiwe Nkosi', title: 'Talent Acquisition Lead', email: 'thandiwe.n@apexfg.co.za', linkedin: true },
-      ],
-      companyEmails: ['careers@apexfg.co.za', 'recruitment@apexfg.co.za'],
-      recentJobs: ['Financial Analyst', 'Risk Manager', 'Data Analyst'],
-    },
-    {
-      id: 3,
-      name: 'GreenPath Logistics',
-      industry: 'Logistics',
-      location: 'Durban',
-      website: 'greenpath.co.za',
-      employees: '51-200',
-      hiringSignal: 'High',
-      openRoles: 7,
-      score: 86,
-      source: 'Mock (no API key)',
-      description: 'Sustainable logistics company rapidly scaling operations.',
-      hiringManagers: [
-        { name: 'Priya Singh', title: 'HR Director', email: 'priya.singh@greenpath.co.za', linkedin: true },
-      ],
-      companyEmails: ['hr@greenpath.co.za', 'jobs@greenpath.co.za'],
-      recentJobs: ['Warehouse Manager', 'Fleet Coordinator'],
-    },
-    {
-      id: 4,
-      name: 'Horizon Health Tech',
-      industry: 'Healthcare',
-      location: 'Pretoria',
-      website: 'horizonhealth.tech',
-      employees: '11-50',
-      hiringSignal: 'Medium',
-      openRoles: 4,
-      score: 81,
-      source: 'Mock (no API key)',
-      description: 'Healthtech startup building AI diagnostic tools.',
-      hiringManagers: [
-        { name: 'Dr. Amara Okeke', title: 'Co-founder & COO', email: 'amara@horizonhealth.tech', linkedin: true },
-      ],
-      companyEmails: ['careers@horizonhealth.tech'],
-      recentJobs: ['Full Stack Developer', 'ML Engineer'],
-    },
-    {
-      id: 5,
-      name: 'CodeCraft Studios',
-      industry: 'Technology',
-      location: 'Cape Town',
-      website: 'codecraft.studio',
-      employees: '11-50',
-      hiringSignal: 'Very High',
-      openRoles: 5,
-      score: 92,
-      source: 'Mock (no API key)',
-      description: 'Boutique software studio known for high-quality React work.',
-      hiringManagers: [
-        { name: 'Daniel Naidoo', title: 'Founder & CEO', email: 'daniel@codecraft.studio', linkedin: true },
-        { name: 'Lisa Pretorius', title: 'People Ops', email: 'lisa@codecraft.studio', linkedin: true },
-      ],
-      companyEmails: ['jobs@codecraft.studio', 'hello@codecraft.studio'],
-      recentJobs: ['Senior Frontend Developer', 'Mobile Developer'],
-    },
-  ];
-
-  return all.filter((l) => {
-    const q = query.toLowerCase();
-    const matchesQ =
-      !q ||
-      l.name.toLowerCase().includes(q) ||
-      l.industry.toLowerCase().includes(q) ||
-      l.description.toLowerCase().includes(q);
-    const matchesLoc = !location || location === 'All' || l.location.includes(location);
-    const matchesInd = !industry || industry === 'All' || l.industry === industry;
-    return matchesQ && matchesLoc && matchesInd;
-  });
-}
-
-function enhanceMockLead(company) {
-  return {
-    ...company,
-    enriched: true,
-    enrichedAt: new Date().toISOString(),
+    enriched: false,
   };
 }
