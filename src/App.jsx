@@ -247,7 +247,7 @@ export default function App() {
           <Route path="recruiter/placements" element={<RecruiterPlacements />} />
           <Route path="recruiter/client-finder-checkout"
           element={<RecruiterClientFinderCheckout />} />
-          <Route path="/legal/partner-agreement" element={<PartnerAgreement />} />
+        
         </Route>
 
         <Route path="/candidate/profile" element={<CandidateProfile />} />
