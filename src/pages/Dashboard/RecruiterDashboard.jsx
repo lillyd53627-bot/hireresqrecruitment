@@ -4,7 +4,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 
 import {
   Users,
@@ -19,6 +19,9 @@ import {
   Upload,
   AlertCircle,
   X,
+  Search,
+  Mic,
+  Lock,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -131,7 +134,7 @@ function calculateMatch(candidate, vacancy) {
 }
 
 /* ============================================================
-   COMPONENT — content only (uses DashboardLayout Sidebar)
+   COMPONENT
 ============================================================ */
 
 export default function RecruiterDashboard() {
@@ -148,7 +151,9 @@ export default function RecruiterDashboard() {
   const [candidates, setCandidates] = useState([]);
   const [placements, setPlacements] = useState([]);
 
-  // Default tab from URL if needed
+  const [clientFinderActive, setClientFinderActive] = useState(false);
+  const [clientFinderExpiresLabel, setClientFinderExpiresLabel] = useState("");
+
   const initialTab = useMemo(() => {
     if (location.pathname.includes("/leads")) return "leads";
     if (location.pathname.includes("/vacancies")) return "vacancies";
@@ -232,7 +237,9 @@ export default function RecruiterDashboard() {
 
         const { data: p, error: profileError } = await supabase
           .from("profiles")
-          .select("id, full_name, role, commission_rate")
+          .select(
+            "id, full_name, role, commission_rate, client_finder_expires_at"
+          )
           .eq("id", currentUser.id)
           .maybeSingle();
 
@@ -245,6 +252,25 @@ export default function RecruiterDashboard() {
         }
 
         setProfile(p);
+
+        const expiresAt = p?.client_finder_expires_at
+          ? new Date(p.client_finder_expires_at)
+          : null;
+
+        if (expiresAt && expiresAt > new Date()) {
+          setClientFinderActive(true);
+          setClientFinderExpiresLabel(
+            expiresAt.toLocaleDateString("en-ZA", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            })
+          );
+        } else {
+          setClientFinderActive(false);
+          setClientFinderExpiresLabel("");
+        }
+
         await loadAll(currentUser.id);
         if (mounted) setLoading(false);
       } catch (err) {
@@ -336,8 +362,12 @@ export default function RecruiterDashboard() {
     };
   }, [leads, vacancies, candidates, placements]);
 
+  const handleUnlockClientFinder = () => {
+    navigate("/dashboard/recruiter/client-finder-checkout");
+  };
+
   /* ==========================================================
-     SAVE HANDLERS (same as before)
+     SAVE HANDLERS
   ========================================================== */
 
   const saveLead = async () => {
@@ -578,7 +608,7 @@ export default function RecruiterDashboard() {
       .sort((a, b) => b.score - a.score);
 
   /* ==========================================================
-     RENDER (content only — no Sidebar / TopBar)
+     RENDER
   ========================================================== */
 
   if (loading) {
@@ -591,7 +621,6 @@ export default function RecruiterDashboard() {
 
   return (
     <div className="p-6 md:p-8 space-y-6">
-      {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Recruiter Hub</h1>
@@ -618,7 +647,6 @@ export default function RecruiterDashboard() {
         </div>
       )}
 
-      {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           {
@@ -665,7 +693,6 @@ export default function RecruiterDashboard() {
         })}
       </div>
 
-      {/* Commission */}
       <Card className="border-0 shadow-sm bg-gradient-to-r from-red-600 to-red-700 text-white">
         <CardContent className="p-6">
           <div className="flex flex-wrap items-center justify-between gap-6">
@@ -673,7 +700,7 @@ export default function RecruiterDashboard() {
               <p className="text-white/80 text-sm">Your commission rate</p>
               <p className="text-3xl font-bold">{Math.round(rate * 100)}%</p>
               <p className="text-sm text-white/70 mt-1">
-                Earn up to 50% commission on successful placements.
+                Flat 50% commission on successful placements.
               </p>
             </div>
             <div className="grid grid-cols-3 gap-6 text-center">
@@ -700,7 +727,6 @@ export default function RecruiterDashboard() {
         </CardContent>
       </Card>
 
-      {/* Actions */}
       <div className="flex flex-wrap gap-2">
         <Button
           className="bg-red-600 hover:bg-red-700 gap-2"
@@ -727,7 +753,97 @@ export default function RecruiterDashboard() {
         </Button>
       </div>
 
-      {/* Tabs — overview only here; dedicated pages handle leads/vacancies/placements */}
+      {/* Optional tools */}
+      <section className="space-y-4">
+        <h2 className="text-lg font-semibold text-gray-900">Optional tools</h2>
+        <div className="grid md:grid-cols-2 gap-4">
+          <Card className="border border-gray-200 shadow-sm">
+            <CardContent className="p-6">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0">
+                  <Search className="w-5 h-5" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-semibold text-gray-900">
+                      AI Client Finder
+                    </h3>
+                    <Badge className="bg-red-100 text-red-700 hover:bg-red-100">
+                      R457 / 30 days
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-gray-600 mt-2">
+                    Find companies currently hiring and unlock enrichment for 30
+                    days.
+                  </p>
+                  {clientFinderActive ? (
+                    <div className="mt-4 flex flex-wrap items-center gap-3">
+                      <Badge className="bg-green-100 text-green-700">
+                        Active
+                      </Badge>
+                      <span className="text-xs text-gray-500">
+                        Expires {clientFinderExpiresLabel}
+                      </span>
+                      <Button
+                        asChild
+                        size="sm"
+                        className="bg-red-600 hover:bg-red-700"
+                      >
+                        <Link to="/dashboard/aiclientfinder">
+                          Open Client Finder
+                        </Link>
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="mt-4 flex flex-wrap items-center gap-3">
+                      <Button
+                        size="sm"
+                        className="bg-red-600 hover:bg-red-700 gap-2"
+                        onClick={handleUnlockClientFinder}
+                      >
+                        <Lock className="w-4 h-4" />
+                        Unlock for R457
+                      </Button>
+                      <span className="text-xs text-gray-500">
+                        30-day access
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border border-gray-200 shadow-sm">
+            <CardContent className="p-6">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gray-100 text-gray-500 flex items-center justify-center shrink-0">
+                  <Mic className="w-5 h-5" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-semibold text-gray-900">
+                      AI Voice Agent
+                    </h3>
+                    <Badge className="bg-gray-100 text-gray-600 hover:bg-gray-100">
+                      Coming soon
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-gray-600 mt-2">
+                    Automated voice outreach and call handling for your desk.
+                  </p>
+                  <div className="mt-4">
+                    <Button size="sm" variant="outline" disabled>
+                      Coming soon
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="flex flex-wrap">
           <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -747,6 +863,7 @@ export default function RecruiterDashboard() {
                   <p className="text-sm text-gray-500">
                     Add companies via{" "}
                     <button
+                      type="button"
                       className="text-red-600 underline"
                       onClick={() => navigate("/dashboard/recruiter/leads")}
                     >
@@ -763,6 +880,7 @@ export default function RecruiterDashboard() {
                   <p className="text-sm text-gray-500">
                     Create vacancies on{" "}
                     <button
+                      type="button"
                       className="text-red-600 underline"
                       onClick={() =>
                         navigate("/dashboard/recruiter/vacancies")
@@ -786,10 +904,11 @@ export default function RecruiterDashboard() {
               <div className="flex gap-3">
                 <Target className="w-5 h-5 text-red-600" />
                 <div>
-                  <strong>4. Match & place</strong>
+                  <strong>4. Match and place</strong>
                   <p className="text-sm text-gray-500">
                     Log placements and track commission on{" "}
                     <button
+                      type="button"
                       className="text-red-600 underline"
                       onClick={() =>
                         navigate("/dashboard/recruiter/placements")
@@ -906,8 +1025,6 @@ export default function RecruiterDashboard() {
           })}
         </TabsContent>
       </Tabs>
-
-      {/* ========== DIALOGS (same as before) ========== */}
 
       {/* Add Candidate */}
       <Dialog open={candidateOpen} onOpenChange={setCandidateOpen}>

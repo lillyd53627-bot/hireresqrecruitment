@@ -8,6 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { CheckCircle, ArrowLeft } from "lucide-react";
 import { supabase } from "../lib/supabase";
 
+/** Bump this when you publish a new agreement text */
+const PARTNER_AGREEMENT_VERSION = "v1.0-2026-10-27";
+
 const CONFIG = {
   affiliate: {
     role: "affiliate",
@@ -16,18 +19,20 @@ const CONFIG = {
     subtitle:
       "Register to refer hiring leads and earn a flat 25% of the placement fee when HireResQ makes a successful placement. No subscription.",
     cta: "Create Lead Partner account",
-    successMessage: "Redirecting to login…",
+    successMessage: "Account created. Please log in to continue.",
     redirectTo: "/login",
+    commission_rate: 0.25,
   },
   recruiter: {
     role: "recruiter",
-    badge: "Up to 50% commission",
+    badge: "Flat 50% commission",
     title: "Independent Recruiter registration",
     subtitle:
-      "Create your account and get your own recruiter dashboard. Earn up to 50% commission — no monthly subscription.",
+      "Create your account and get your own recruiter dashboard. Earn a flat 50% commission — no monthly subscription.",
     cta: "Create Independent Recruiter account",
     successMessage: "Taking you to your dashboard…",
     redirectTo: "/dashboard/recruiter",
+    commission_rate: 0.5,
   },
 };
 
@@ -43,9 +48,11 @@ export default function PartnerRegister() {
     password: "",
     confirmPassword: "",
   });
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   const handleChange = (e) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -55,6 +62,12 @@ export default function PartnerRegister() {
     e.preventDefault();
     setError(null);
 
+    if (!agreedToTerms) {
+      setError(
+        "You must accept the Master Partner Agreement to create an account."
+      );
+      return;
+    }
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords don't match");
       return;
@@ -87,23 +100,45 @@ export default function PartnerRegister() {
 
       const userId = authData?.user?.id;
       if (userId) {
+        const acceptedAt = new Date().toISOString();
+
         const payload = {
           id: userId,
           full_name: formData.fullName.trim(),
           email: formData.email.trim(),
           phone: formData.phone || null,
           role: config.role,
+          commission_rate: config.commission_rate,
+          partner_agreement_version: PARTNER_AGREEMENT_VERSION,
+          partner_agreement_accepted_at: acceptedAt,
         };
-        if (config.role === "recruiter") {
-          payload.commission_rate = 0.5;
-        }
+
         const { error: profileError } = await supabase
           .from("profiles")
           .upsert(payload, { onConflict: "id" });
-        if (profileError) console.error(profileError);
+
+        if (profileError) throw profileError;
       }
 
       setSuccess(true);
+
+      const hasSession = Boolean(authData?.session);
+
+      if (config.role === "recruiter" && hasSession) {
+        setSuccessMessage(config.successMessage);
+        setTimeout(() => navigate("/dashboard/recruiter"), 1400);
+        return;
+      }
+
+      if (config.role === "recruiter" && !hasSession) {
+        setSuccessMessage(
+          "Account created. Check your email to confirm, then log in to open your recruiter dashboard."
+        );
+        setTimeout(() => navigate("/login"), 1800);
+        return;
+      }
+
+      setSuccessMessage(config.successMessage);
       setTimeout(() => navigate(config.redirectTo), 1400);
     } catch (err) {
       console.error(err);
@@ -133,7 +168,9 @@ export default function PartnerRegister() {
           <CardContent className="p-8 text-center">
             <CheckCircle className="w-12 h-12 text-green-600 mx-auto mb-4" />
             <h2 className="text-xl font-semibold">Account created</h2>
-            <p className="text-sm text-gray-500 mt-2">{config.successMessage}</p>
+            <p className="text-sm text-gray-500 mt-2">
+              {successMessage || config.successMessage}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -222,10 +259,36 @@ export default function PartnerRegister() {
             />
           </div>
 
+          {/* Master Partner Agreement — required */}
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                className="mt-1 h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-600"
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
+              />
+              <span className="text-sm text-gray-700 leading-relaxed">
+                I have read and agree to the{" "}
+                <Link
+                  to="/legal/partner-agreement"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-red-600 font-medium hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Master Partner Agreement
+                </Link>{" "}
+                (version {PARTNER_AGREEMENT_VERSION}). I understand commission,
+                VAT, client and candidate terms that apply to my partner type.
+              </span>
+            </label>
+          </div>
+
           <Button
             type="submit"
-            disabled={loading}
-            className="w-full bg-red-600 hover:bg-red-700 text-white py-6 text-lg"
+            disabled={loading || !agreedToTerms}
+            className="w-full bg-red-600 hover:bg-red-700 text-white py-6 text-lg disabled:opacity-50"
           >
             {loading ? "Creating account…" : config.cta}
           </Button>

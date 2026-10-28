@@ -72,6 +72,7 @@ import AIVoiceAgent from "./pages/Dashboard/AIVoiceAgent";
 import AICalls from "./pages/Dashboard/AICalls";
 import CandidateProfile from "./pages/Candidate/Profile";
 import PublicCandidates from "./pages/Dashboard/PublicCandidates";
+import RecruiterClientFinderCheckout from "./pages/Dashboard/RecruiterClientFinderCheckout";
 
 // Public Job Board pages
 import CandidateRegister from "./pages/CandidateRegister";
@@ -244,6 +245,9 @@ export default function App() {
           <Route path="recruiter/leads" element={<RecruiterLeads />} />
           <Route path="recruiter/vacancies" element={<RecruiterVacancies />} />
           <Route path="recruiter/placements" element={<RecruiterPlacements />} />
+          <Route path="recruiter/client-finder-checkout"
+          element={<RecruiterClientFinderCheckout />} />
+          <Route path="/legal/partner-agreement" element={<PartnerAgreement />} />
         </Route>
 
         <Route path="/candidate/profile" element={<CandidateProfile />} />
