@@ -84,6 +84,7 @@ import RecruiterDashboard from "./pages/Dashboard/RecruiterDashboard";
 import RecruiterLeads from "./pages/Dashboard/RecruiterLeads";
 import RecruiterVacancies from "./pages/Dashboard/RecruiterVacancies";
 import RecruiterPlacements from "./pages/Dashboard/RecruiterPlacements";
+import PartnerAgreement from "./pages/PartnerAgreement";
 
 // ============================================================
 // AUTHENTICATED DASHBOARD GUARD
@@ -178,6 +179,7 @@ export default function App() {
       {/* PARTNERS — public */}
       <Route path="/partners" element={<Partners />} />
       <Route path="/partners/register/:type" element={<PartnerRegister />} />
+      <Route path="/legal/partner-agreement" element={<PartnerAgreement />} />
 
       {/* AUTHENTICATION */}
       <Route path="/login" element={<Login />} />
@@ -188,7 +190,7 @@ export default function App() {
       <Route path="/privacy" element={<PrivacyPolicy />} />
       <Route path="/security" element={<Security />} />
       <Route path="/popia" element={<POPIA />} />
-
+      
       {/* PUBLIC FEATURE DEMOS */}
       <Route path="/demo/ai-client-finder" element={<AIClientFinderDemo />} />
       <Route path="/demo/ai-outreach-engine" element={<AIOutreachDemo />} />
